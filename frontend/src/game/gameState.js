@@ -1,37 +1,8 @@
-import { deriveKeyboardState, evaluateGuess, mergeKeyboardState } from './evaluateGuess.js'
-import { VALID_GUESSES } from './words.js'
-
-function createEvent(state, values) {
-  const id = state.eventSequence + 1
-  return {
-    eventSequence: id,
-    event: { id, ...values },
-  }
-}
-
-function rejectGuess(state, message) {
-  const { event, eventSequence } = createEvent(state, {
-    duration: 1700,
-    message,
-    row: state.guesses.length,
-  })
-
-  return {
-    ...state,
-    eventSequence,
-    feedbackEvent: event,
-    invalidEvent: event,
-  }
-}
+import { deriveKeyboardState, mergeKeyboardState } from './evaluateGuess.js'
 
 export function createGameState(game) {
   return {
     ...game,
-    eventSequence: 0,
-    feedbackEvent: null,
-    gameId: 0,
-    inputLocked: false,
-    invalidEvent: null,
     keyboardState: deriveKeyboardState(game.guesses),
     pendingOutcome: null,
   }
@@ -47,34 +18,22 @@ export function gameReducer(state, action) {
       if (state.phase !== 'active' || state.currentGuess.length === 0) return state
       return { ...state, currentGuess: state.currentGuess.slice(0, -1) }
 
-    case 'submit-guess': {
+    case 'guess-accepted': {
       if (state.phase !== 'active') return state
-      if (state.currentGuess.length !== state.wordLength) {
-        return rejectGuess(state, 'Not enough letters')
-      }
-      if (!VALID_GUESSES[state.wordLength].has(state.currentGuess)) {
-        return rejectGuess(state, 'Not in word list')
-      }
-
-      const evaluation = evaluateGuess(state.currentGuess, state.answer)
+      const evaluation = action.evaluation
       const rowIndex = state.guesses.length
-      const guesses = [...state.guesses, { word: state.currentGuess, evaluation }]
-      const didWin = state.currentGuess === state.answer
-      const didLose = !didWin && guesses.length === state.wordLength + 1
-      const settledPhase = didWin ? 'won' : didLose ? 'lost' : 'active'
+      const guesses = [...state.guesses, { word: action.guess, evaluation }]
 
       return {
         ...state,
         currentGuess: '',
-        feedbackEvent: null,
         guesses,
-        invalidEvent: null,
-        keyboardState: mergeKeyboardState(state.keyboardState, state.currentGuess, evaluation),
+        keyboardState: mergeKeyboardState(state.keyboardState, action.guess, evaluation),
         pendingOutcome: {
           answer: state.answer,
           attemptCount: guesses.length,
           rowIndex,
-          settledPhase,
+          settledPhase: action.settledPhase,
         },
         phase: 'revealing',
       }
@@ -82,21 +41,10 @@ export function gameReducer(state, action) {
 
     case 'complete-reveal': {
       if (!state.pendingOutcome) return state
-      const { answer, attemptCount, settledPhase } = state.pendingOutcome
-
-      if (settledPhase === 'active') {
-        return { ...state, pendingOutcome: null, phase: 'active' }
-      }
-
-      const { event, eventSequence } = createEvent(state, {
-        duration: settledPhase === 'lost' ? 4000 : 2400,
-        message: settledPhase === 'lost' ? answer : attemptCount === 1 ? 'Genius' : 'Splendid',
-      })
+      const { settledPhase } = state.pendingOutcome
 
       return {
         ...state,
-        eventSequence,
-        feedbackEvent: event,
         pendingOutcome: null,
         phase: settledPhase,
       }
@@ -104,23 +52,14 @@ export function gameReducer(state, action) {
 
     case 'start-game':
       return {
-        ...state,
         answer: action.answer,
         currentGuess: '',
-        feedbackEvent: null,
-        gameId: state.gameId + 1,
         guesses: [],
-        inputLocked: false,
-        invalidEvent: null,
         keyboardState: {},
         pendingOutcome: null,
         phase: 'active',
         wordLength: action.wordLength,
       }
-
-    case 'set-input-locked':
-      if (state.inputLocked === action.value) return state
-      return { ...state, inputLocked: action.value }
 
     default:
       return state

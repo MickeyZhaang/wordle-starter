@@ -1,28 +1,26 @@
 import { useCallback, useState } from 'react'
-import { useGameActions, useGameState } from '../game/useGame.js'
 import NewGameDialog from './NewGameDialog.jsx'
 
-function GameLengthControl() {
-  const { wordLength } = useGameState()
-  const { setInputLocked, startGame } = useGameActions()
+function GameLengthControl({ onInputLockChange, onStartGame, wordLength }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   const openDialog = useCallback(() => {
-    setInputLocked(true)
+    onInputLockChange(true)
     setIsDialogOpen(true)
-  }, [setInputLocked])
+  }, [onInputLockChange])
 
   const closeDialog = useCallback(() => {
     setIsDialogOpen(false)
-    setInputLocked(false)
-  }, [setInputLocked])
+    onInputLockChange(false)
+  }, [onInputLockChange])
 
   const handleStart = useCallback(
     (length) => {
       setIsDialogOpen(false)
-      startGame(length)
+      onInputLockChange(false)
+      onStartGame(length)
     },
-    [startGame],
+    [onInputLockChange, onStartGame],
   )
 
   return (

@@ -1,14 +1,9 @@
-import { useGameActions, useGameState } from '../game/useGame.js'
-
-function RestartButton() {
-  const { wordLength } = useGameState()
-  const { startGame } = useGameActions()
-
+function RestartButton({ onRestart }) {
   return (
     <button
       aria-label="Restart game"
       className="header-icon-button"
-      onClick={() => startGame(wordLength)}
+      onClick={onRestart}
       type="button"
     >
       <svg aria-hidden="true" viewBox="0 0 24 24">

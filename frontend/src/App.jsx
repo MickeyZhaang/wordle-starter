@@ -1,13 +1,8 @@
 import './App.css'
 import WordGame from './components/WordGame.jsx'
-import GameProvider from './game/GameProvider.jsx'
 
 function App() {
-  return (
-    <GameProvider>
-      <WordGame />
-    </GameProvider>
-  )
+  return <WordGame />
 }
 
 export default App

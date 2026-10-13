@@ -3,10 +3,6 @@ const GAME_STORAGE_KEY = 'wordle-game'
 const VALID_PHASES = new Set(['active', 'won', 'lost'])
 const VALID_RESULTS = new Set(['correct', 'present', 'absent'])
 
-function isUppercaseWord(value, maximumLength) {
-  return typeof value === 'string' && value.length <= maximumLength && /^[A-Z]*$/.test(value)
-}
-
 function isStoredGuess(value, wordLength) {
   return (
     value !== null &&
@@ -22,7 +18,7 @@ function isStoredGuess(value, wordLength) {
 
 function isStoredGame(value) {
   if (value === null || typeof value !== 'object') return false
-  const { answer, currentGuess, guesses, phase, wordLength } = value
+  const { answer, guesses, phase, wordLength } = value
   const maxAttempts = wordLength + 1
 
   const hasValidShape =
@@ -35,7 +31,6 @@ function isStoredGame(value) {
     Array.isArray(guesses) &&
     guesses.length <= maxAttempts &&
     guesses.every((guess) => isStoredGuess(guess, wordLength)) &&
-    isUppercaseWord(currentGuess, wordLength) &&
     VALID_PHASES.has(phase)
 
   if (!hasValidShape) return false
@@ -46,10 +41,10 @@ function isStoredGame(value) {
   }
 
   if (phase === 'won') {
-    return currentGuess === '' && winningGuessIndex === guesses.length - 1
+    return winningGuessIndex === guesses.length - 1
   }
 
-  return currentGuess === '' && guesses.length === maxAttempts && winningGuessIndex === -1
+  return guesses.length === maxAttempts && winningGuessIndex === -1
 }
 
 function resolveStorage(storage) {
@@ -61,7 +56,7 @@ export function loadGameState(fallback, storage) {
     const storedGame = resolveStorage(storage).getItem(GAME_STORAGE_KEY)
     if (!storedGame) return fallback
     const parsedGame = JSON.parse(storedGame)
-    return isStoredGame(parsedGame) ? parsedGame : fallback
+    return isStoredGame(parsedGame) ? { ...parsedGame, currentGuess: '' } : fallback
   } catch {
     return fallback
   }

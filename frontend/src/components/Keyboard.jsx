@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from 'react'
-import { useGameActions, useGameState } from '../game/useGame.js'
 
 const KEY_ROWS = [
   ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -10,27 +9,24 @@ const KEY_ROWS = [
 const TEXT_INPUT_SELECTOR = 'input, select, textarea, [contenteditable="true"]'
 const ACTIVATION_SELECTOR = 'button, a[href]'
 
-function Keyboard() {
-  const { inputLocked, keyboardState, phase } = useGameState()
-  const { deleteLetter, submitGuess, typeLetter } = useGameActions()
-
+function Keyboard({ inputLocked, keyboardState, onDelete, onSubmit, onType, phase }) {
   const handleKey = useCallback(
     (key) => {
       if (phase !== 'active' || inputLocked) return
 
       if (key === 'ENTER') {
-        submitGuess()
+        onSubmit()
         return
       }
 
       if (key === 'BACKSPACE') {
-        deleteLetter()
+        onDelete()
         return
       }
 
-      if (/^[A-Z]$/.test(key)) typeLetter(key)
+      if (/^[A-Z]$/.test(key)) onType(key)
     },
-    [deleteLetter, inputLocked, phase, submitGuess, typeLetter],
+    [inputLocked, onDelete, onSubmit, onType, phase],
   )
 
   useEffect(() => {

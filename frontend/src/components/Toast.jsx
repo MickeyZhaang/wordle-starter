@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useGameState } from '../game/useGame.js'
 
 function ToastMessage({ duration, message }) {
   const [isVisible, setIsVisible] = useState(true)
@@ -12,17 +11,11 @@ function ToastMessage({ duration, message }) {
   return isVisible ? <div className="toast">{message}</div> : null
 }
 
-function Toast() {
-  const { feedbackEvent } = useGameState()
-
+function Toast({ event }) {
   return (
     <div className="toast-region" aria-live="polite" aria-atomic="true">
-      {feedbackEvent?.message && (
-        <ToastMessage
-          duration={feedbackEvent.duration}
-          key={feedbackEvent.id}
-          message={feedbackEvent.message}
-        />
+      {event?.message && (
+        <ToastMessage duration={event.duration} key={event.id} message={event.message} />
       )}
     </div>
   )
