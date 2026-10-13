@@ -47,6 +47,7 @@ function Keyboard({ inputLocked, keyboardState, onDelete, onSubmit, onType, phas
     [handleKey, inputLocked],
   )
 
+  // Listen outside the rendered keys for physical keyboard input and remove stale listeners.
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyDown)
     return () => window.removeEventListener('keydown', handlePhysicalKeyDown)

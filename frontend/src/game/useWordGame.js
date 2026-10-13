@@ -33,6 +33,7 @@ function useWordGame() {
   const { answer, currentGuess, guesses, keyboardState, pendingOutcome, phase, wordLength } = state
   const persistedPhase = phase === 'revealing' ? (pendingOutcome?.settledPhase ?? 'active') : phase
 
+  // Persist durable game changes while excluding the current guess to avoid writes on every keystroke.
   useEffect(() => {
     saveGameState({
       answer,

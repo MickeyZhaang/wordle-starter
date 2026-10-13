@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 function ToastMessage({ duration, message }) {
   const [isVisible, setIsVisible] = useState(true)
 
+  // Start dismissal when this toast mounts and cancel it if the toast is replaced or unmounted.
   useEffect(() => {
     const timer = window.setTimeout(() => setIsVisible(false), duration)
     return () => window.clearTimeout(timer)

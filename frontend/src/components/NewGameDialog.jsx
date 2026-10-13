@@ -13,41 +13,37 @@ const FOCUSABLE_SELECTOR = [
 function NewGameDialog({ currentLength, isOpen, onClose, onStart }) {
   const dialogRef = useRef(null)
   const closeButtonRef = useRef(null)
-  const previousFocusRef = useRef(null)
 
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      onClose()
+      return
+    }
+
+    if (event.key !== 'Tab') return
+    const focusableElements = dialogRef.current?.querySelectorAll(FOCUSABLE_SELECTOR)
+    if (!focusableElements?.length) return
+    const firstElement = focusableElements[0]
+    const lastElement = focusableElements[focusableElements.length - 1]
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault()
+      lastElement.focus()
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault()
+      firstElement.focus()
+    }
+  }
+
+  // Move focus into the open dialog and restore it to the previous element when the dialog closes.
   useEffect(() => {
     if (!isOpen) return undefined
-    previousFocusRef.current = document.activeElement
+    const previousFocus = document.activeElement
     closeButtonRef.current?.focus()
 
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-        return
-      }
-
-      if (event.key !== 'Tab') return
-      const focusableElements = dialogRef.current?.querySelectorAll(FOCUSABLE_SELECTOR)
-      if (!focusableElements?.length) return
-      const firstElement = focusableElements[0]
-      const lastElement = focusableElements[focusableElements.length - 1]
-
-      if (event.shiftKey && document.activeElement === firstElement) {
-        event.preventDefault()
-        lastElement.focus()
-      } else if (!event.shiftKey && document.activeElement === lastElement) {
-        event.preventDefault()
-        firstElement.focus()
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      previousFocusRef.current?.focus()
-    }
-  }, [isOpen, onClose])
+    return () => previousFocus?.focus()
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -63,6 +59,7 @@ function NewGameDialog({ currentLength, isOpen, onClose, onStart }) {
         aria-labelledby="new-game-title"
         aria-modal="true"
         className="dialog"
+        onKeyDown={handleKeyDown}
         ref={dialogRef}
         role="dialog"
       >
