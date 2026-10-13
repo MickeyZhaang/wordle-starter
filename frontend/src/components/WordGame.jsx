@@ -5,12 +5,16 @@ import GameHeader from './GameHeader.jsx'
 import Keyboard from './Keyboard.jsx'
 import Toast from './Toast.jsx'
 
+function releasePointerFocus(event) {
+  if (event.detail > 0 && event.target instanceof Element) event.target.closest('button')?.blur()
+}
+
 function WordGame() {
   const game = useWordGame()
   const [inputLocked, setInputLocked] = useState(false)
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" onClick={releasePointerFocus}>
       <GameHeader
         onInputLockChange={setInputLocked}
         onStartGame={game.startGame}
