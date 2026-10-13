@@ -102,10 +102,9 @@ function App() {
     setGuesses(nextGuesses)
     setCurrentGuess('')
     setPhase('revealing')
+    setKeyboardState((previous) => mergeKeyboardState(previous, currentGuess, evaluation))
 
     schedule(() => {
-      setKeyboardState((previous) => mergeKeyboardState(previous, currentGuess, evaluation))
-
       if (didWin) {
         setPhase('won')
         setWinningRow(rowIndex)

@@ -176,6 +176,7 @@
   display: grid;
   grid-template-columns: repeat(var(--columns), 1fr);
   gap: 5px;
+  perspective: 1000px;
 }
 
 .tile {
@@ -228,8 +229,12 @@
 }
 
 .tile[data-animation='flip'] {
-  animation: flip 600ms ease forwards;
+  animation: flip 620ms both;
   animation-delay: calc(var(--tile-index) * 280ms);
+  backface-visibility: hidden;
+  transform-origin: center;
+  transform-style: preserve-3d;
+  will-change: transform;
 }
 
 .board-row.is-invalid {
@@ -456,12 +461,14 @@ button:focus-visible {
     background: var(--background);
     color: var(--text);
     transform: rotateX(0deg);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.53);
   }
 
-  49% {
+  49.9% {
     border-color: var(--border-filled);
     background: var(--background);
     color: var(--text);
+    transform: rotateX(-90deg);
   }
 
   50% {
@@ -469,6 +476,7 @@ button:focus-visible {
     background: var(--tile-background);
     color: #ffffff;
     transform: rotateX(-90deg);
+    animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
   100% {
