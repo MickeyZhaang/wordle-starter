@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@wordle/*": ["src/*"]
+    }
+  },
+  "include": ["src"]
+}

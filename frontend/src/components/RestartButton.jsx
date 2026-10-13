@@ -1,3 +1,5 @@
+import { RestartIcon } from '../icons'
+
 function RestartButton({ onRestart }) {
   return (
     <button
@@ -6,9 +8,7 @@ function RestartButton({ onRestart }) {
       onClick={onRestart}
       type="button"
     >
-      <svg aria-hidden="true" viewBox="0 0 24 24">
-        <path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" />
-      </svg>
+      <RestartIcon />
     </button>
   )
 }
