@@ -1,10 +1,58 @@
+import { useCallback, useEffect } from 'react'
+import { useGameActions, useGameState } from '../game/useGame.js'
+
 const KEY_ROWS = [
   ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
   ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
   ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'BACKSPACE'],
 ]
 
-function Keyboard({ letterStates, onKey }) {
+const TEXT_INPUT_SELECTOR = 'input, select, textarea, [contenteditable="true"]'
+const ACTIVATION_SELECTOR = 'button, a[href]'
+
+function Keyboard() {
+  const { inputLocked, keyboardState, phase } = useGameState()
+  const { deleteLetter, submitGuess, typeLetter } = useGameActions()
+
+  const handleKey = useCallback(
+    (key) => {
+      if (phase !== 'active' || inputLocked) return
+
+      if (key === 'ENTER') {
+        submitGuess()
+        return
+      }
+
+      if (key === 'BACKSPACE') {
+        deleteLetter()
+        return
+      }
+
+      if (/^[A-Z]$/.test(key)) typeLetter(key)
+    },
+    [deleteLetter, inputLocked, phase, submitGuess, typeLetter],
+  )
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (inputLocked || event.metaKey || event.ctrlKey || event.altKey) return
+      const key = event.key.toUpperCase()
+
+      if (event.target instanceof Element) {
+        if (event.target.closest(TEXT_INPUT_SELECTOR)) return
+        if (key === 'ENTER' && event.target.closest(ACTIVATION_SELECTOR)) return
+      }
+
+      if (/^[A-Z]$/.test(key) || key === 'ENTER' || key === 'BACKSPACE') {
+        event.preventDefault()
+        handleKey(key)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleKey, inputLocked])
+
   return (
     <div className="keyboard" aria-label="On-screen keyboard" role="group">
       {KEY_ROWS.map((row, rowIndex) => (
@@ -17,9 +65,9 @@ function Keyboard({ letterStates, onKey }) {
               <button
                 aria-label={label}
                 className={`key${isAction ? ' key--wide' : ''}`}
-                data-state={letterStates[key]}
+                data-state={keyboardState[key]}
                 key={key}
-                onClick={() => onKey(key)}
+                onClick={() => handleKey(key)}
                 type="button"
               >
                 {key === 'BACKSPACE' ? (

@@ -1,15 +1,26 @@
+import { useCallback, useEffect, useState } from 'react'
+import { useGameActions, useGameState } from '../game/useGame.js'
 import Tile from './Tile.jsx'
 
-function Board({
-  currentGuess,
-  guesses,
-  invalidRow,
-  maxAttempts,
-  onRevealComplete,
-  phase,
-  winningRow,
-  wordLength,
-}) {
+function Board() {
+  const { currentGuess, guesses, invalidEvent, pendingOutcome, phase, wordLength } = useGameState()
+  const { completeReveal } = useGameActions()
+  const [expiredInvalidEventId, setExpiredInvalidEventId] = useState(null)
+  const [winningRow, setWinningRow] = useState(null)
+  const maxAttempts = wordLength + 1
+  const invalidRow = invalidEvent?.id === expiredInvalidEventId ? null : invalidEvent?.row
+
+  useEffect(() => {
+    if (!invalidEvent) return undefined
+    const timer = window.setTimeout(() => setExpiredInvalidEventId(invalidEvent.id), 650)
+    return () => window.clearTimeout(timer)
+  }, [invalidEvent])
+
+  const handleRevealComplete = useCallback(() => {
+    if (pendingOutcome?.settledPhase === 'won') setWinningRow(guesses.length - 1)
+    completeReveal()
+  }, [completeReveal, guesses.length, pendingOutcome?.settledPhase])
+
   const rows = Array.from({ length: maxAttempts }, (_, rowIndex) => {
     const submittedGuess = guesses[rowIndex]
     const isCurrentRow = rowIndex === guesses.length
@@ -37,7 +48,7 @@ function Board({
             key={tileIndex}
             letter={word[tileIndex] ?? ''}
             onRevealComplete={
-              isRevealingRow && tileIndex === wordLength - 1 ? onRevealComplete : undefined
+              isRevealingRow && tileIndex === wordLength - 1 ? handleRevealComplete : undefined
             }
             state={evaluation[tileIndex] ?? (word[tileIndex] ? 'tbd' : 'empty')}
             tileIndex={tileIndex}
