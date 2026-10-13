@@ -122,6 +122,14 @@
   stroke-linejoin: round;
 }
 
+.header-icon-button .theme-moon-icon {
+  width: 26px;
+  height: 26px;
+  fill: currentColor;
+  stroke: none;
+  transform: translateX(1px);
+}
+
 .game {
   position: relative;
   width: 100%;
