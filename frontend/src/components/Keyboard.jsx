@@ -29,8 +29,8 @@ function Keyboard({ inputLocked, keyboardState, onDelete, onSubmit, onType, phas
     [inputLocked, onDelete, onSubmit, onType, phase],
   )
 
-  useEffect(() => {
-    const onKeyDown = (event) => {
+  const handlePhysicalKeyDown = useCallback(
+    (event) => {
       if (inputLocked || event.metaKey || event.ctrlKey || event.altKey) return
       const key = event.key.toUpperCase()
 
@@ -43,11 +43,14 @@ function Keyboard({ inputLocked, keyboardState, onDelete, onSubmit, onType, phas
         event.preventDefault()
         handleKey(key)
       }
-    }
+    },
+    [handleKey, inputLocked],
+  )
 
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleKey, inputLocked])
+  useEffect(() => {
+    window.addEventListener('keydown', handlePhysicalKeyDown)
+    return () => window.removeEventListener('keydown', handlePhysicalKeyDown)
+  }, [handlePhysicalKeyDown])
 
   return (
     <div className="keyboard" aria-label="On-screen keyboard" role="group">

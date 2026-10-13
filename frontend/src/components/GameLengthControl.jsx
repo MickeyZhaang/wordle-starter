@@ -4,24 +4,21 @@ import NewGameDialog from './NewGameDialog.jsx'
 function GameLengthControl({ onInputLockChange, onStartGame, wordLength }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  const openDialog = useCallback(() => {
+  const openDialog = () => {
     onInputLockChange(true)
     setIsDialogOpen(true)
-  }, [onInputLockChange])
+  }
 
   const closeDialog = useCallback(() => {
     setIsDialogOpen(false)
     onInputLockChange(false)
   }, [onInputLockChange])
 
-  const handleStart = useCallback(
-    (length) => {
-      setIsDialogOpen(false)
-      onInputLockChange(false)
-      onStartGame(length)
-    },
-    [onInputLockChange, onStartGame],
-  )
+  const handleStart = (length) => {
+    setIsDialogOpen(false)
+    onInputLockChange(false)
+    onStartGame(length)
+  }
 
   return (
     <>
