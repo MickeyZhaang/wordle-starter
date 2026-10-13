@@ -29,11 +29,21 @@ export function evaluateGuess(guess, answer) {
 }
 
 export function mergeKeyboardState(previous, guess, evaluation) {
-  return evaluation.reduce((next, state, index) => {
-    const letter = guess[index]
-    if (!next[letter] || STATE_PRIORITY[state] > STATE_PRIORITY[next[letter]]) {
-      next[letter] = state
-    }
-    return next
-  }, { ...previous })
+  return evaluation.reduce(
+    (next, state, index) => {
+      const letter = guess[index]
+      if (!next[letter] || STATE_PRIORITY[state] > STATE_PRIORITY[next[letter]]) {
+        next[letter] = state
+      }
+      return next
+    },
+    { ...previous },
+  )
+}
+
+export function deriveKeyboardState(guesses) {
+  return guesses.reduce(
+    (state, guess) => mergeKeyboardState(state, guess.word, guess.evaluation),
+    {},
+  )
 }

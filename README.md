@@ -78,6 +78,7 @@ npm run dev
 The frontend will be available at `http://localhost:5173`.
 
 **Key files to modify:**
+
 - `frontend/src/App.jsx` - Main application component, start building your UI here
 - `frontend/src/App.css` - Application styles
 - Add new components in `frontend/src/components/` as needed
@@ -107,6 +108,7 @@ docker compose down
 API documentation is automatically available at `http://localhost:8000/docs`.
 
 **Key files to modify:**
+
 - `backend/main.py` - Add your API endpoints here
 - `backend/requirements.txt` - Add any additional Python dependencies
 
@@ -118,3 +120,24 @@ API documentation is automatically available at `http://localhost:8000/docs`.
 4. Build your UI in the `frontend/src/` directory
 5. The frontend is configured to make requests to `http://localhost:8000`
 
+### Formatting
+
+Install each application’s formatting tools once:
+
+```bash
+npm --prefix frontend install
+python3 -m pip install -r backend/requirements-dev.txt
+```
+
+VS Code recommends the Prettier and Ruff extensions and formats supported files on save using the
+configuration checked into each application. Other editors can use the same application-specific
+configuration through their Prettier, EditorConfig, and Ruff integrations.
+
+Format or verify each application from the command line:
+
+```bash
+npm --prefix frontend run format
+npm --prefix frontend run format:check
+python3 -m ruff format backend
+python3 -m ruff format --check backend
+```

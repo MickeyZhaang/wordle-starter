@@ -1,29 +1,71 @@
 import { useEffect, useRef } from 'react'
 
 const LENGTHS = [5, 6, 7, 8]
+const FOCUSABLE_SELECTOR = [
+  'button:not(:disabled)',
+  'a[href]',
+  'input:not(:disabled)',
+  'select:not(:disabled)',
+  'textarea:not(:disabled)',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ')
 
 function NewGameDialog({ currentLength, isOpen, onClose, onStart }) {
+  const dialogRef = useRef(null)
   const closeButtonRef = useRef(null)
+  const previousFocusRef = useRef(null)
 
   useEffect(() => {
     if (!isOpen) return undefined
+    previousFocusRef.current = document.activeElement
     closeButtonRef.current?.focus()
 
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
+      }
+
+      if (event.key !== 'Tab') return
+      const focusableElements = dialogRef.current?.querySelectorAll(FOCUSABLE_SELECTOR)
+      if (!focusableElements?.length) return
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault()
+        lastElement.focus()
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault()
+        firstElement.focus()
+      }
     }
 
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      previousFocusRef.current?.focus()
+    }
   }, [isOpen, onClose])
 
   if (!isOpen) return null
 
   return (
-    <div className="dialog-overlay" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose()
-    }}>
-      <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="new-game-title">
+    <div
+      className="dialog-overlay"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <section
+        aria-describedby="new-game-description"
+        aria-labelledby="new-game-title"
+        aria-modal="true"
+        className="dialog"
+        ref={dialogRef}
+        role="dialog"
+      >
         <button
           aria-label="Close"
           className="dialog-close"
@@ -35,7 +77,9 @@ function NewGameDialog({ currentLength, isOpen, onClose, onStart }) {
         </button>
         <p className="dialog-kicker">New game</p>
         <h2 id="new-game-title">Choose a word length</h2>
-        <p className="dialog-copy">You’ll get one more guess than the number of letters.</p>
+        <p className="dialog-copy" id="new-game-description">
+          You’ll get one more guess than the number of letters.
+        </p>
         <div className="length-options">
           {LENGTHS.map((length) => (
             <button

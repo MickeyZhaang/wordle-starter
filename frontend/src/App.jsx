@@ -5,80 +5,178 @@ import GameHeader from './components/GameHeader.jsx'
 import Keyboard from './components/Keyboard.jsx'
 import NewGameDialog from './components/NewGameDialog.jsx'
 import Toast from './components/Toast.jsx'
+import { deriveKeyboardState, evaluateGuess, mergeKeyboardState } from './game/evaluateGuess.js'
+import { loadGameState, saveGameState } from './game/persistence.js'
 import { ANSWERS, VALID_GUESSES } from './game/words.js'
-import { evaluateGuess, mergeKeyboardState } from './game/evaluateGuess.js'
 
 const INITIAL_WORD_LENGTH = 5
 const THEME_STORAGE_KEY = 'wordle-theme'
+const TEXT_INPUT_SELECTOR = 'input, select, textarea, [contenteditable="true"]'
+const ACTIVATION_SELECTOR = 'button, a[href]'
+
+function createInitialGame() {
+  return {
+    wordLength: INITIAL_WORD_LENGTH,
+    answer: ANSWERS[INITIAL_WORD_LENGTH][0],
+    guesses: [],
+    currentGuess: '',
+    phase: 'active',
+  }
+}
 
 function getInitialTheme() {
-  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
-  if (storedTheme === 'light' || storedTheme === 'dark') return storedTheme
+  try {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+    if (storedTheme === 'light' || storedTheme === 'dark') return storedTheme
+  } catch {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
+function saveTheme(theme) {
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function App() {
-  const [wordLength, setWordLength] = useState(INITIAL_WORD_LENGTH)
-  const [answer, setAnswer] = useState(ANSWERS[INITIAL_WORD_LENGTH][0])
-  const [guesses, setGuesses] = useState([])
-  const [currentGuess, setCurrentGuess] = useState('')
-  const [keyboardState, setKeyboardState] = useState({})
-  const [phase, setPhase] = useState('active')
+  const [initialGame] = useState(() => loadGameState(createInitialGame()))
+  const [wordLength, setWordLength] = useState(initialGame.wordLength)
+  const [answer, setAnswer] = useState(initialGame.answer)
+  const [guesses, setGuesses] = useState(initialGame.guesses)
+  const [currentGuess, setCurrentGuess] = useState(initialGame.currentGuess)
+  const [keyboardState, setKeyboardState] = useState(() => deriveKeyboardState(initialGame.guesses))
+  const [phase, setPhase] = useState(initialGame.phase)
   const [toast, setToast] = useState('')
   const [invalidRow, setInvalidRow] = useState(null)
   const [winningRow, setWinningRow] = useState(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [theme, setTheme] = useState(getInitialTheme)
-  const timers = useRef([])
+  const timers = useRef(new Set())
+  const toastTimer = useRef(null)
+  const invalidTimer = useRef(null)
+  const pendingReveal = useRef(null)
 
   const maxAttempts = wordLength + 1
 
-  const schedule = useCallback((callback, delay) => {
-    const timer = window.setTimeout(callback, delay)
-    timers.current.push(timer)
+  const clearTimer = useCallback((timer) => {
+    if (timer === null) return
+    window.clearTimeout(timer)
+    timers.current.delete(timer)
   }, [])
 
-  const showToast = useCallback((message, duration = 1700) => {
-    setToast(message)
-    schedule(() => setToast(''), duration)
-  }, [schedule])
-
-  useEffect(() => () => {
+  const clearAllTimers = useCallback(() => {
     timers.current.forEach(window.clearTimeout)
+    timers.current.clear()
+    toastTimer.current = null
+    invalidTimer.current = null
   }, [])
+
+  const schedule = useCallback((callback, delay) => {
+    const timer = window.setTimeout(() => {
+      timers.current.delete(timer)
+      callback()
+    }, delay)
+    timers.current.add(timer)
+    return timer
+  }, [])
+
+  const showToast = useCallback(
+    (message, duration = 1700) => {
+      clearTimer(toastTimer.current)
+      setToast(message)
+      toastTimer.current = schedule(() => {
+        toastTimer.current = null
+        setToast('')
+      }, duration)
+    },
+    [clearTimer, schedule],
+  )
+
+  useEffect(() => {
+    return clearAllTimers
+  }, [clearAllTimers])
 
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme
     document.documentElement.style.colorScheme = theme
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
-    document.querySelector('meta[name="theme-color"]')?.setAttribute(
-      'content',
-      theme === 'dark' ? '#121213' : '#ffffff',
-    )
+    saveTheme(theme)
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', theme === 'dark' ? '#121213' : '#ffffff')
   }, [theme])
 
-  const startGame = useCallback((length) => {
-    timers.current.forEach(window.clearTimeout)
-    timers.current = []
-    const answers = ANSWERS[length]
-    const nextAnswer = answers[Math.floor(Math.random() * answers.length)]
-    setWordLength(length)
-    setAnswer(nextAnswer)
-    setGuesses([])
-    setCurrentGuess('')
-    setKeyboardState({})
-    setPhase('active')
-    setToast('')
-    setInvalidRow(null)
-    setWinningRow(null)
-    setIsDialogOpen(false)
+  useEffect(() => {
+    if (phase === 'revealing') return
+    saveGameState({ wordLength, answer, guesses, currentGuess, phase })
+  }, [answer, currentGuess, guesses, phase, wordLength])
+
+  const openDialog = useCallback(() => setIsDialogOpen(true), [])
+  const closeDialog = useCallback(() => setIsDialogOpen(false), [])
+  const toggleTheme = useCallback(() => {
+    setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))
   }, [])
 
-  const rejectGuess = useCallback((message) => {
-    setInvalidRow(guesses.length)
-    showToast(message)
-    schedule(() => setInvalidRow(null), 650)
-  }, [guesses.length, schedule, showToast])
+  const startGame = useCallback(
+    (length) => {
+      clearAllTimers()
+      pendingReveal.current = null
+      const answers = ANSWERS[length]
+      const nextAnswer = answers[Math.floor(Math.random() * answers.length)]
+      setWordLength(length)
+      setAnswer(nextAnswer)
+      setGuesses([])
+      setCurrentGuess('')
+      setKeyboardState({})
+      setPhase('active')
+      setToast('')
+      setInvalidRow(null)
+      setWinningRow(null)
+      setIsDialogOpen(false)
+    },
+    [clearAllTimers],
+  )
+
+  const restartGame = useCallback(() => startGame(wordLength), [startGame, wordLength])
+
+  const rejectGuess = useCallback(
+    (message) => {
+      clearTimer(invalidTimer.current)
+      setInvalidRow(guesses.length)
+      showToast(message)
+      invalidTimer.current = schedule(() => {
+        invalidTimer.current = null
+        setInvalidRow(null)
+      }, 650)
+    },
+    [clearTimer, guesses.length, schedule, showToast],
+  )
+
+  const completeReveal = useCallback(() => {
+    const result = pendingReveal.current
+    if (!result) return
+    pendingReveal.current = null
+
+    if (result.settledPhase === 'won') {
+      setPhase('won')
+      setWinningRow(result.rowIndex)
+      showToast(result.attemptCount === 1 ? 'Genius' : 'Splendid', 2400)
+      return
+    }
+
+    if (result.settledPhase === 'lost') {
+      setPhase('lost')
+      showToast(result.answer, 4000)
+      return
+    }
+
+    setPhase('active')
+  }, [showToast])
 
   const submitGuess = useCallback(() => {
     if (phase !== 'active') return
@@ -97,53 +195,56 @@ function App() {
     const nextGuesses = [...guesses, { word: currentGuess, evaluation }]
     const didWin = currentGuess === answer
     const didLose = !didWin && nextGuesses.length === maxAttempts
-    const revealDuration = (wordLength - 1) * 280 + 620
+    const settledPhase = didWin ? 'won' : didLose ? 'lost' : 'active'
 
+    pendingReveal.current = {
+      answer,
+      attemptCount: nextGuesses.length,
+      settledPhase,
+      rowIndex,
+    }
+    saveGameState({
+      wordLength,
+      answer,
+      guesses: nextGuesses,
+      currentGuess: '',
+      phase: settledPhase,
+    })
     setGuesses(nextGuesses)
     setCurrentGuess('')
     setPhase('revealing')
     setKeyboardState((previous) => mergeKeyboardState(previous, currentGuess, evaluation))
+  }, [answer, currentGuess, guesses, maxAttempts, phase, rejectGuess, wordLength])
 
-    schedule(() => {
-      if (didWin) {
-        setPhase('won')
-        setWinningRow(rowIndex)
-        showToast(nextGuesses.length === 1 ? 'Genius' : 'Splendid', 2400)
+  const handleKey = useCallback(
+    (key) => {
+      if (phase !== 'active' || isDialogOpen) return
+
+      if (key === 'ENTER') {
+        submitGuess()
         return
       }
 
-      if (didLose) {
-        setPhase('lost')
-        showToast(answer, 4000)
+      if (key === 'BACKSPACE') {
+        setCurrentGuess((guess) => guess.slice(0, -1))
         return
       }
 
-      setPhase('active')
-    }, revealDuration)
-  }, [answer, currentGuess, guesses, maxAttempts, phase, rejectGuess, schedule, showToast, wordLength])
-
-  const handleKey = useCallback((key) => {
-    if (phase !== 'active' || isDialogOpen) return
-
-    if (key === 'ENTER') {
-      submitGuess()
-      return
-    }
-
-    if (key === 'BACKSPACE') {
-      setCurrentGuess((guess) => guess.slice(0, -1))
-      return
-    }
-
-    if (/^[A-Z]$/.test(key)) {
-      setCurrentGuess((guess) => guess.length < wordLength ? `${guess}${key}` : guess)
-    }
-  }, [isDialogOpen, phase, submitGuess, wordLength])
+      if (/^[A-Z]$/.test(key)) {
+        setCurrentGuess((guess) => (guess.length < wordLength ? `${guess}${key}` : guess))
+      }
+    },
+    [isDialogOpen, phase, submitGuess, wordLength],
+  )
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return
+      if (isDialogOpen || event.metaKey || event.ctrlKey || event.altKey) return
       const key = event.key.toUpperCase()
+      if (event.target instanceof Element) {
+        if (event.target.closest(TEXT_INPUT_SELECTOR)) return
+        if (key === 'ENTER' && event.target.closest(ACTIVATION_SELECTOR)) return
+      }
       if (/^[A-Z]$/.test(key) || key === 'ENTER' || key === 'BACKSPACE') {
         event.preventDefault()
         handleKey(key)
@@ -152,16 +253,16 @@ function App() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleKey])
+  }, [handleKey, isDialogOpen])
 
   return (
     <main className="app-shell">
       <GameHeader
         theme={theme}
         wordLength={wordLength}
-        onChooseLength={() => setIsDialogOpen(true)}
-        onRestart={() => startGame(wordLength)}
-        onToggleTheme={() => setTheme((currentTheme) => currentTheme === 'dark' ? 'light' : 'dark')}
+        onChooseLength={openDialog}
+        onRestart={restartGame}
+        onToggleTheme={toggleTheme}
       />
       <section className="game" aria-label={`${wordLength}-letter word game`}>
         <Toast message={toast} />
@@ -170,6 +271,7 @@ function App() {
           guesses={guesses}
           invalidRow={invalidRow}
           maxAttempts={maxAttempts}
+          onRevealComplete={completeReveal}
           phase={phase}
           winningRow={winningRow}
           wordLength={wordLength}
@@ -179,7 +281,7 @@ function App() {
       <NewGameDialog
         currentLength={wordLength}
         isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+        onClose={closeDialog}
         onStart={startGame}
       />
     </main>

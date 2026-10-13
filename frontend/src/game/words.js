@@ -6,10 +6,34 @@ export const ANSWERS = {
 }
 
 const WORDS = {
-  5: ['AUDIO', 'BRICK', 'CLOUD', 'CRANE', 'LEAST', 'PAINT', 'PLACE', 'PLANE', 'PLANT', 'RAISE', 'SHORE', 'SLATE', 'STARE', 'TRAIN'],
+  5: [
+    'AUDIO',
+    'BRICK',
+    'CLOUD',
+    'CRANE',
+    'LEAST',
+    'PAINT',
+    'PLACE',
+    'PLANE',
+    'PLANT',
+    'RAISE',
+    'SHORE',
+    'SLATE',
+    'STARE',
+    'TRAIN',
+  ],
   6: ['BRIGHT', 'FRIEND', 'FROZEN', 'GARDEN', 'MARKET', 'ORANGE', 'PLANET', 'STREAM'],
   7: ['BALANCE', 'FLOWERS', 'JOURNEY', 'ORCHARD', 'PICTURE', 'TEACHER', 'VILLAGE'],
-  8: ['BUILDING', 'COMPUTER', 'ELEPHANT', 'HOSPITAL', 'NOTEBOOK', 'QUESTION', 'SEEDLING', 'SUNSHINE'],
+  8: [
+    'BUILDING',
+    'COMPUTER',
+    'ELEPHANT',
+    'HOSPITAL',
+    'NOTEBOOK',
+    'QUESTION',
+    'SEEDLING',
+    'SUNSHINE',
+  ],
 }
 
 export const VALID_GUESSES = Object.fromEntries(

@@ -6,7 +6,7 @@ const KEY_ROWS = [
 
 function Keyboard({ letterStates, onKey }) {
   return (
-    <div className="keyboard" aria-label="On-screen keyboard">
+    <div className="keyboard" aria-label="On-screen keyboard" role="group">
       {KEY_ROWS.map((row, rowIndex) => (
         <div className="keyboard-row" data-row={rowIndex + 1} key={row.join('')}>
           {row.map((key) => {
@@ -22,7 +22,13 @@ function Keyboard({ letterStates, onKey }) {
                 onClick={() => onKey(key)}
                 type="button"
               >
-                {key === 'BACKSPACE' ? <span className="backspace-icon" aria-hidden="true">⌫</span> : key}
+                {key === 'BACKSPACE' ? (
+                  <span aria-hidden="true" className="backspace-icon">
+                    ⌫
+                  </span>
+                ) : (
+                  key
+                )}
               </button>
             )
           })}
