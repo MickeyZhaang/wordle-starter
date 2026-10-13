@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Tile from './Tile.jsx'
 
 function Board({ currentGuess, event, guesses, onRevealComplete, phase, wordLength }) {
@@ -8,11 +8,11 @@ function Board({ currentGuess, event, guesses, onRevealComplete, phase, wordLeng
   const invalidRow = invalidEvent?.id === expiredInvalidEventId ? null : invalidEvent?.row
   const winningRow = event?.type === 'won' ? event.row : null
 
-  useEffect(() => {
-    if (!invalidEvent) return undefined
-    const timer = window.setTimeout(() => setExpiredInvalidEventId(invalidEvent.id), 650)
-    return () => window.clearTimeout(timer)
-  }, [invalidEvent])
+  const handleInvalidAnimationEnd = (animationEvent) => {
+    if (animationEvent.animationName === 'shake' && invalidEvent) {
+      setExpiredInvalidEventId(invalidEvent.id)
+    }
+  }
 
   const rows = Array.from({ length: maxAttempts }, (_, rowIndex) => {
     const submittedGuess = guesses[rowIndex]
@@ -32,6 +32,7 @@ function Board({ currentGuess, event, guesses, onRevealComplete, phase, wordLeng
       <div
         className={rowClassName}
         key={rowIndex}
+        onAnimationEnd={invalidRow === rowIndex ? handleInvalidAnimationEnd : undefined}
         role="group"
         aria-label={`Guess ${rowIndex + 1} of ${maxAttempts}`}
       >
