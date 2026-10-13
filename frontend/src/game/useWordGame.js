@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { evaluateGuess } from './evaluateGuess.js'
 import { createGameState, gameReducer } from './gameState.js'
 import { loadGameState, saveGameState } from './persistence.js'
@@ -43,20 +43,20 @@ function useWordGame() {
     })
   }, [answer, guesses, persistedPhase, wordLength])
 
-  const emitEvent = useCallback((values) => {
+  const emitEvent = (values) => {
     eventSequence.current += 1
     setEvent({ id: eventSequence.current, ...values })
-  }, [])
+  }
 
-  const typeLetter = useCallback((letter) => {
+  const typeLetter = (letter) => {
     dispatch({ type: 'type-letter', letter })
-  }, [])
+  }
 
-  const deleteLetter = useCallback(() => {
+  const deleteLetter = () => {
     dispatch({ type: 'delete-letter' })
-  }, [])
+  }
 
-  const submitGuess = useCallback(() => {
+  const submitGuess = () => {
     if (phase !== 'active') return
 
     if (currentGuess.length !== wordLength) {
@@ -84,9 +84,9 @@ function useWordGame() {
     const settledPhase = getOutcome(currentGuess, answer, attemptCount, wordLength + 1)
     setEvent(null)
     dispatch({ type: 'guess-accepted', evaluation, guess: currentGuess, settledPhase })
-  }, [answer, currentGuess, emitEvent, guesses.length, phase, wordLength])
+  }
 
-  const completeReveal = useCallback(() => {
+  const completeReveal = () => {
     if (!pendingOutcome) return
     dispatch({ type: 'complete-reveal' })
 
@@ -111,14 +111,14 @@ function useWordGame() {
     }
 
     setEvent(null)
-  }, [emitEvent, pendingOutcome])
+  }
 
-  const startGame = useCallback((nextWordLength) => {
+  const startGame = (nextWordLength) => {
     const answers = ANSWERS[nextWordLength]
     const nextAnswer = answers[Math.floor(Math.random() * answers.length)]
     setEvent(null)
     dispatch({ type: 'start-game', answer: nextAnswer, wordLength: nextWordLength })
-  }, [])
+  }
 
   return {
     completeReveal,
