@@ -1,7 +1,13 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
-import { createGame, getGame, submitGuess as submitGuessRequest } from './api.js'
+import { attachGame, createGame, getGame, submitGuess as submitGuessRequest } from './api.js'
+import { getGameIdFromPath, replaceGamePath } from './gameRoute.js'
 import { createInitialGameState, gameReducer } from './gameState.js'
-import { clearGameReference, loadGameReference, saveGameReference } from './persistence.js'
+import {
+  clearGameReference,
+  loadGameReference,
+  loadOrCreatePlayerId,
+  saveGameReference,
+} from './persistence.js'
 
 const INITIAL_WORD_LENGTH = 5
 const INVALID_GUESS_CODES = new Set(['invalid_request', 'invalid_word', 'wrong_length'])
@@ -21,6 +27,7 @@ function requestEvent(error, row) {
 function useWordGame() {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialGameState)
   const [event, setEvent] = useState(null)
+  const [playerId] = useState(loadOrCreatePlayerId)
   const eventSequence = useRef(0)
   const initializationStarted = useRef(false)
   const isMounted = useRef(false)
@@ -49,23 +56,41 @@ function useWordGame() {
 
       const initialize = async () => {
         const reference = loadGameReference()
+        const routeGameId = getGameIdFromPath()
 
         try {
           let game = null
+          let isOwnedGame = false
+          const candidateIds = [...new Set([routeGameId, reference?.id].filter(Boolean))]
 
-          if (reference) {
+          for (const candidateId of candidateIds) {
             try {
-              game = await getGame(reference.id)
+              game = await getGame(candidateId)
+              isOwnedGame = candidateId === reference?.id && reference?.playerId === playerId
+
+              if (candidateId === reference?.id && !reference?.playerId) {
+                try {
+                  await attachGame(playerId, candidateId)
+                  isOwnedGame = true
+                } catch (error) {
+                  if (error?.code !== 'game_owned') throw error
+                }
+              }
+              break
             } catch (error) {
               if (!INVALID_REFERENCE_CODES.has(error?.code)) throw error
-              clearGameReference()
+              if (candidateId === reference?.id) clearGameReference()
             }
           }
 
-          if (!game) game = await createGame(reference?.wordLength ?? INITIAL_WORD_LENGTH)
+          if (!game) {
+            game = await createGame(reference?.wordLength ?? INITIAL_WORD_LENGTH, playerId)
+            isOwnedGame = true
+          }
           if (!isMounted.current || requestId !== requestSequence.current) return
 
-          saveGameReference(game)
+          if (isOwnedGame) saveGameReference(game, playerId)
+          replaceGamePath(game.id)
           dispatch({ type: 'game-loaded', game })
         } catch (error) {
           if (!isMounted.current || requestId !== requestSequence.current) return
@@ -83,7 +108,7 @@ function useWordGame() {
     return () => {
       isMounted.current = false
     }
-  }, [])
+  }, [playerId])
 
   const emitEvent = (values) => {
     eventSequence.current += 1
@@ -130,7 +155,7 @@ function useWordGame() {
           const game = await getGame(gameId)
           if (!isMounted.current || requestId !== requestSequence.current) return
 
-          saveGameReference(game)
+          replaceGamePath(game.id)
           dispatch({ type: 'game-loaded', game })
           emitEvent({
             duration: 3000,
@@ -186,10 +211,36 @@ function useWordGame() {
     dispatch({ type: 'request-started' })
 
     try {
-      const game = await createGame(nextWordLength)
+      const game = await createGame(nextWordLength, playerId)
       if (!isMounted.current || requestId !== requestSequence.current) return
 
-      saveGameReference(game)
+      saveGameReference(game, playerId)
+      replaceGamePath(game.id)
+      dispatch({ type: 'game-loaded', game })
+    } catch (error) {
+      if (!isMounted.current || requestId !== requestSequence.current) return
+      dispatch({ type: 'request-failed' })
+      emitEvent(requestEvent(error))
+    } finally {
+      if (requestId === requestSequence.current) requestInFlight.current = false
+    }
+  }
+
+  const restoreGame = async (nextGameId) => {
+    if (requestInFlight.current || nextGameId === gameId) return
+
+    requestInFlight.current = true
+    requestSequence.current += 1
+    const requestId = requestSequence.current
+    setEvent(null)
+    dispatch({ type: 'request-started' })
+
+    try {
+      const game = await getGame(nextGameId)
+      if (!isMounted.current || requestId !== requestSequence.current) return
+
+      saveGameReference(game, playerId)
+      replaceGamePath(game.id)
       dispatch({ type: 'game-loaded', game })
     } catch (error) {
       if (!isMounted.current || requestId !== requestSequence.current) return
@@ -205,11 +256,14 @@ function useWordGame() {
     currentGuess,
     deleteLetter,
     event,
+    gameId,
     guesses,
     hasGame: Boolean(gameId),
     keyboardState,
     phase,
+    playerId,
     requestPending,
+    restoreGame,
     startGame,
     submitGuess,
     typeLetter,

@@ -37,9 +37,9 @@ async function request(path, options = {}) {
   return body
 }
 
-export function createGame(wordLength) {
+export function createGame(wordLength, playerId) {
   return request('/games', {
-    body: JSON.stringify({ wordLength }),
+    body: JSON.stringify({ playerId, wordLength }),
     headers: { 'Content-Type': 'application/json' },
     method: 'POST',
   })
@@ -47,6 +47,16 @@ export function createGame(wordLength) {
 
 export function getGame(gameId) {
   return request(`/games/${gameId}`)
+}
+
+export function attachGame(playerId, gameId) {
+  return request(`/players/${playerId}/games/${gameId}`, { method: 'POST' })
+}
+
+export function getGameHistory(playerId, cursor, limit = 20) {
+  const parameters = new URLSearchParams({ limit: String(limit) })
+  if (cursor) parameters.set('cursor', cursor)
+  return request(`/players/${playerId}/games?${parameters}`)
 }
 
 export function submitGuess(gameId, word, expectedVersion) {

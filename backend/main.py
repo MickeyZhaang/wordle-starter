@@ -3,16 +3,17 @@ import os
 import sqlite3
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 import game
 import storage
-from schemas import ErrorResponse, GameResponse, GuessRequest, NewGameRequest
+from schemas import ErrorResponse, GameHistoryResponse, GameResponse, GuessRequest, NewGameRequest
 from words import load_dictionaries
 
 logger = logging.getLogger(__name__)
@@ -88,7 +89,12 @@ def create_app(database_path=None):
         response_model_exclude_none=True,
     )
     def new_game(body: NewGameRequest, request: Request, response: Response):
-        result = game.create_game(database_path, request.app.state.dictionaries, body.word_length)
+        result = game.create_game(
+            database_path,
+            request.app.state.dictionaries,
+            body.word_length,
+            str(body.player_id),
+        )
         response.headers["Location"] = f"/games/{result.id}"
         return result
 
@@ -99,6 +105,31 @@ def create_app(database_path=None):
     )
     def get_game(game_id: UUID):
         return game.retrieve_game(database_path, str(game_id))
+
+    @app.post(
+        "/players/{player_id}/games/{game_id}",
+        response_model=GameResponse,
+        response_model_exclude_none=True,
+    )
+    def attach_game(player_id: UUID, game_id: UUID):
+        return game.attach_game(database_path, str(player_id), str(game_id))
+
+    @app.get(
+        "/players/{player_id}/games",
+        response_model=GameHistoryResponse,
+        response_model_exclude_none=True,
+    )
+    def list_games(
+        player_id: UUID,
+        limit: Annotated[int, Query(ge=1, le=50)] = 20,
+        cursor: UUID | None = None,
+    ):
+        return game.list_games(
+            database_path,
+            str(player_id),
+            limit,
+            str(cursor) if cursor else None,
+        )
 
     @app.post(
         "/games/{game_id}/guesses",

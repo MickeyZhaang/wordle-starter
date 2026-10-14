@@ -5,7 +5,8 @@ rounds, physical and on-screen keyboard input, sequential result reveals, light 
 and server-backed game restoration after a reload.
 
 The FastAPI service is authoritative for answers, accepted words, evaluations, game status, and
-versioning. The browser stores only the current server game ID and its word length.
+versioning. The browser stores an anonymous player ID and the current server game reference. Game
+history is retrieved from the server, and the current game is addressable at `/games/{gameId}`.
 
 ## Development
 

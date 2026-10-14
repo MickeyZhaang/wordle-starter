@@ -23,7 +23,7 @@ function GameLengthControl({ disabled, onInputLockChange, onStartGame, wordLengt
   return (
     <>
       <button className="header-text-button" disabled={disabled} onClick={openDialog} type="button">
-        {wordLength} letters
+        New game
       </button>
       <NewGameDialog
         currentLength={wordLength}

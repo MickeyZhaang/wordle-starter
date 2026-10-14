@@ -48,6 +48,14 @@ def initialize(database_path: Path):
                 evaluation TEXT NOT NULL,
                 PRIMARY KEY (game_id, attempt)
             );
+            CREATE TABLE IF NOT EXISTS player_games (
+                player_id TEXT NOT NULL,
+                game_id TEXT NOT NULL UNIQUE REFERENCES games(id),
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (player_id, game_id)
+            );
+            CREATE INDEX IF NOT EXISTS player_games_history
+            ON player_games (player_id, created_at DESC, game_id DESC);
         """)
 
 
@@ -59,6 +67,73 @@ def insert_game(connection, game_id, answer, word_length, dictionary_version):
         """,
         (game_id, answer, word_length, dictionary_version),
     )
+
+
+def insert_player_game(connection, player_id, game_id):
+    connection.execute(
+        """
+        INSERT INTO player_games (player_id, game_id, created_at)
+        SELECT ?, id, created_at FROM games WHERE id = ?
+        """,
+        (player_id, game_id),
+    )
+
+
+def get_game_owner(connection, game_id):
+    row = connection.execute(
+        "SELECT player_id FROM player_games WHERE game_id = ?",
+        (game_id,),
+    ).fetchone()
+    return row["player_id"] if row else None
+
+
+def get_history_position(connection, player_id, game_id):
+    return connection.execute(
+        """
+        SELECT created_at, game_id
+        FROM player_games
+        WHERE player_id = ? AND game_id = ?
+        """,
+        (player_id, game_id),
+    ).fetchone()
+
+
+def list_player_games(connection, player_id, limit, cursor_position=None):
+    parameters = [player_id]
+    cursor_clause = ""
+    if cursor_position is not None:
+        cursor_clause = """
+            AND (
+                player_games.created_at < ?
+                OR (player_games.created_at = ? AND player_games.game_id < ?)
+            )
+        """
+        parameters.extend(
+            [
+                cursor_position["created_at"],
+                cursor_position["created_at"],
+                cursor_position["game_id"],
+            ]
+        )
+    parameters.append(limit)
+    return connection.execute(
+        f"""
+        SELECT
+            games.id,
+            games.answer,
+            games.word_length,
+            games.status,
+            games.version,
+            player_games.created_at
+        FROM player_games
+        JOIN games ON games.id = player_games.game_id
+        WHERE player_games.player_id = ?
+        {cursor_clause}
+        ORDER BY player_games.created_at DESC, player_games.game_id DESC
+        LIMIT ?
+        """,
+        parameters,
+    ).fetchall()
 
 
 def get_game(connection, game_id):

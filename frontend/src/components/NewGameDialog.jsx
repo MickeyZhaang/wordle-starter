@@ -36,7 +36,6 @@ function NewGameDialog({ currentLength, isOpen, onClose, onStart }) {
     }
   }
 
-  // Move focus into the open dialog and restore it to the previous element when the dialog closes.
   useEffect(() => {
     if (!isOpen) return undefined
     const previousFocus = document.activeElement

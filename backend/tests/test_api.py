@@ -23,10 +23,14 @@ class ApiTests(unittest.TestCase):
         self.database_path = Path(directory) / "wordle.db"
         self.app = create_app(self.database_path)
         self.client = self.enterContext(TestClient(self.app))
+        self.player_id = str(uuid4())
 
     def new_game(self, length=5):
         with patch("game.choice", return_value=ANSWERS[length]):
-            response = self.client.post("/games", json={"wordLength": length})
+            response = self.client.post(
+                "/games",
+                json={"playerId": self.player_id, "wordLength": length},
+            )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.headers["location"], f"/games/{response.json()['id']}")
         return response.json()
@@ -69,13 +73,16 @@ class ApiTests(unittest.TestCase):
     def test_create_rejects_invalid_lengths_types_and_extra_fields(self):
         for body in [
             {},
-            {"wordLength": 4},
-            {"wordLength": 9},
-            {"wordLength": "5"},
-            {"wordLength": 5.0},
-            {"wordLength": True},
-            {"wordLength": None},
-            {"wordLength": 5, "answer": "PLANT"},
+            {"wordLength": 5},
+            {"playerId": self.player_id},
+            {"playerId": self.player_id, "wordLength": 4},
+            {"playerId": self.player_id, "wordLength": 9},
+            {"playerId": self.player_id, "wordLength": "5"},
+            {"playerId": self.player_id, "wordLength": 5.0},
+            {"playerId": self.player_id, "wordLength": True},
+            {"playerId": self.player_id, "wordLength": None},
+            {"playerId": "bad-id", "wordLength": 5},
+            {"playerId": self.player_id, "wordLength": 5, "answer": "PLANT"},
         ]:
             with self.subTest(body=body):
                 self.assert_error(self.client.post("/games", json=body), 422, "invalid_request")
@@ -133,7 +140,10 @@ class ApiTests(unittest.TestCase):
 
     def test_duplicate_letter_feedback_through_api(self):
         with patch("game.choice", return_value="APPLE"):
-            game = self.client.post("/games", json={"wordLength": 5}).json()
+            game = self.client.post(
+                "/games",
+                json={"playerId": self.player_id, "wordLength": 5},
+            ).json()
         result = self.submit(game, "ALLEY").json()
         self.assertEqual(
             result["guesses"][0]["evaluation"],
@@ -232,7 +242,10 @@ class ApiTests(unittest.TestCase):
             TestClient(create_app(database)) as first_client,
             patch("game.choice", return_value="PLANT"),
         ):
-            game = first_client.post("/games", json={"wordLength": 5}).json()
+            game = first_client.post(
+                "/games",
+                json={"playerId": self.player_id, "wordLength": 5},
+            ).json()
             accepted = first_client.post(
                 f"/games/{game['id']}/guesses",
                 json={"word": "CRANE", "expectedVersion": 0},
@@ -265,7 +278,67 @@ class ApiTests(unittest.TestCase):
         self.assertTrue({"200", "404", "409", "422", "503"}.issubset(operation["responses"]))
         schema = document["components"]["schemas"]["GuessRequest"]
         self.assertEqual(set(schema["required"]), {"word", "expectedVersion"})
+        new_game_schema = document["components"]["schemas"]["NewGameRequest"]
+        self.assertEqual(set(new_game_schema["required"]), {"playerId", "wordLength"})
         self.assertEqual(self.client.get("/docs").status_code, 200)
+
+    def test_history_is_scoped_paginated_and_restorable(self):
+        games = [self.new_game(length) for length in [5, 6, 7]]
+        other_player = str(uuid4())
+        with patch("game.choice", return_value="SEEDLING"):
+            other_game = self.client.post(
+                "/games",
+                json={"playerId": other_player, "wordLength": 8},
+            ).json()
+
+        first_page = self.client.get(
+            f"/players/{self.player_id}/games",
+            params={"limit": 2},
+        ).json()
+        self.assertEqual(len(first_page["games"]), 2)
+        self.assertIsNotNone(first_page["nextCursor"])
+        self.assertNotIn(other_game["id"], {game["id"] for game in first_page["games"]})
+
+        second_page = self.client.get(
+            f"/players/{self.player_id}/games",
+            params={"limit": 2, "cursor": first_page["nextCursor"]},
+        ).json()
+        history_ids = {game["id"] for game in first_page["games"] + second_page["games"]}
+        self.assertEqual(history_ids, {game["id"] for game in games})
+        self.assertIsNone(second_page.get("nextCursor"))
+        restored = self.client.get(f"/games/{games[0]['id']}").json()
+        self.assertEqual(restored, games[0])
+
+    def test_completed_history_reveals_answer_and_active_history_does_not(self):
+        active = self.new_game()
+        won = self.submit(self.new_game(), "PLANT").json()
+        history = self.client.get(f"/players/{self.player_id}/games").json()["games"]
+        summaries = {game["id"]: game for game in history}
+        self.assertNotIn("answer", summaries[active["id"]])
+        self.assertEqual(summaries[won["id"]]["answer"], "PLANT")
+
+    def test_legacy_game_can_be_attached_to_one_player(self):
+        game_id = str(uuid4())
+        with storage.connect(self.database_path) as connection, storage.transaction(connection):
+            storage.insert_game(connection, game_id, "PLANT", 5, DICTIONARY_VERSION)
+
+        response = self.client.post(f"/players/{self.player_id}/games/{game_id}")
+        self.assertEqual(response.status_code, 200)
+        history = self.client.get(f"/players/{self.player_id}/games").json()["games"]
+        self.assertIn(game_id, {game["id"] for game in history})
+        self.assert_error(
+            self.client.post(f"/players/{uuid4()}/games/{game_id}"),
+            409,
+            "game_owned",
+        )
+
+    def test_history_rejects_invalid_cursor(self):
+        self.new_game()
+        response = self.client.get(
+            f"/players/{self.player_id}/games",
+            params={"cursor": str(uuid4())},
+        )
+        self.assert_error(response, 422, "invalid_cursor")
 
     def test_health_and_cors(self):
         self.assertEqual(self.client.get("/health").json(), {"status": "healthy"})

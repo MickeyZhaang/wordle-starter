@@ -27,7 +27,7 @@ Create a game:
 POST /games
 Content-Type: application/json
 
-{"wordLength": 5}
+{"playerId": "6f59df0d-81fb-4f20-8711-9f15bafcc841", "wordLength": 5}
 ```
 
 Retrieve a game:
@@ -48,6 +48,16 @@ Content-Type: application/json
 Successful endpoints return the public game state. The answer is omitted while the game is active
 and included after a win or loss. Each accepted guess increments `version`; a submission with an
 older `expectedVersion` receives `409 stale_game`.
+
+List a player's games:
+
+```http
+GET /players/{playerId}/games?limit=20&cursor={gameId}
+```
+
+History is ordered newest first and uses the last game ID from one response as the next request's
+cursor. Selecting a game uses `GET /games/{gameId}` to retrieve its latest state. Browser profiles
+are anonymous identifiers rather than authenticated accounts.
 
 Errors use a consistent shape:
 

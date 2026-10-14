@@ -16,9 +16,12 @@ function WordGame() {
   return (
     <main aria-busy={game.requestPending} className="app-shell" onClick={releasePointerFocus}>
       <GameHeader
+        currentGameId={game.gameId}
         disabled={game.requestPending}
         onInputLockChange={setInputLocked}
+        onRestoreGame={game.restoreGame}
         onStartGame={game.startGame}
+        playerId={game.playerId}
         wordLength={game.wordLength}
       />
       <section className="game" aria-label={`${game.wordLength}-letter word game`}>

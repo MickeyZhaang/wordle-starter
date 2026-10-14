@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -8,6 +9,7 @@ class NewGameRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     word_length: Annotated[int, Field(alias="wordLength", strict=True, ge=5, le=8)]
+    player_id: UUID = Field(alias="playerId")
 
 
 class GuessRequest(BaseModel):
@@ -35,6 +37,21 @@ class GameResponse(BaseModel):
     version: int
     guesses: list[GuessResponse]
     answer: str | None = None
+
+
+class GameSummaryResponse(BaseModel):
+    id: UUID
+    word_length: int = Field(serialization_alias="wordLength")
+    max_attempts: int = Field(serialization_alias="maxAttempts")
+    status: Literal["active", "won", "lost"]
+    version: int
+    created_at: datetime = Field(serialization_alias="createdAt")
+    answer: str | None = None
+
+
+class GameHistoryResponse(BaseModel):
+    games: list[GameSummaryResponse]
+    next_cursor: UUID | None = Field(default=None, serialization_alias="nextCursor")
 
 
 class ErrorDetail(BaseModel):
