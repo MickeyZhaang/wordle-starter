@@ -7,7 +7,6 @@ import ThemeToggle from './ThemeToggle.jsx'
 function GameHeader({
   currentGameId,
   disabled,
-  onInputLockChange,
   onRestoreGame,
   onStartGame,
   playerId,
@@ -17,12 +16,7 @@ function GameHeader({
   return (
     <header className="game-header">
       <div className="header-side header-side--left">
-        <GameLengthControl
-          disabled={disabled}
-          onInputLockChange={onInputLockChange}
-          onStartGame={onStartGame}
-          wordLength={wordLength}
-        />
+        <GameLengthControl disabled={disabled} onStartGame={onStartGame} wordLength={wordLength} />
         {Number.isInteger(remainingWordCount) && (
           <RemainingWordCount key={currentGameId} value={remainingWordCount} />
         )}
@@ -32,7 +26,6 @@ function GameHeader({
         <GameHistoryControl
           currentGameId={currentGameId}
           disabled={disabled}
-          onInputLockChange={onInputLockChange}
           onRestoreGame={onRestoreGame}
           playerId={playerId}
         />

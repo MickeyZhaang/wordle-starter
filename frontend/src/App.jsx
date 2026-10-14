@@ -1,5 +1,5 @@
 import './App.css'
-import WordGame from './components/WordGame.jsx'
+import WordGame from '@wordle/components/gameplay/WordGame.jsx'
 
 function App() {
   return <WordGame />

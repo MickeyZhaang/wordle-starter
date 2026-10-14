@@ -6,13 +6,14 @@ const KEY_ROWS = [
   ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'BACKSPACE'],
 ]
 
-const TEXT_INPUT_SELECTOR = 'input, select, textarea, [contenteditable="true"]'
+const GAME_INPUT_EXCLUSION_SELECTOR =
+  'input, select, textarea, [contenteditable="true"], [role="dialog"]'
 const ACTIVATION_SELECTOR = 'button, a[href]'
 
-function Keyboard({ inputLocked, keyboardState, onDelete, onSubmit, onType, phase }) {
+function Keyboard({ disabled, keyboardState, onDelete, onSubmit, onType, phase }) {
   const handleKey = useCallback(
     (key) => {
-      if (phase !== 'active' || inputLocked) return
+      if (phase !== 'active' || disabled) return
 
       if (key === 'ENTER') {
         onSubmit()
@@ -26,16 +27,16 @@ function Keyboard({ inputLocked, keyboardState, onDelete, onSubmit, onType, phas
 
       if (/^[A-Z]$/.test(key)) onType(key)
     },
-    [inputLocked, onDelete, onSubmit, onType, phase],
+    [disabled, onDelete, onSubmit, onType, phase],
   )
 
   const handlePhysicalKeyDown = useCallback(
     (event) => {
-      if (inputLocked || event.metaKey || event.ctrlKey || event.altKey) return
+      if (disabled || event.metaKey || event.ctrlKey || event.altKey) return
       const key = event.key.toUpperCase()
 
       if (event.target instanceof Element) {
-        if (event.target.closest(TEXT_INPUT_SELECTOR)) return
+        if (event.target.closest(GAME_INPUT_EXCLUSION_SELECTOR)) return
         if (key === 'ENTER' && event.target.closest(ACTIVATION_SELECTOR)) return
       }
 
@@ -44,7 +45,7 @@ function Keyboard({ inputLocked, keyboardState, onDelete, onSubmit, onType, phas
         handleKey(key)
       }
     },
-    [handleKey, inputLocked],
+    [disabled, handleKey],
   )
 
   useEffect(() => {

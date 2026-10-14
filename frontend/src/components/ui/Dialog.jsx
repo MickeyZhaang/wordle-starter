@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 
-const LENGTHS = [5, 6, 7, 8]
 const FOCUSABLE_SELECTOR = [
   'button:not(:disabled)',
   'a[href]',
@@ -10,7 +9,7 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ')
 
-function NewGameDialog({ currentLength, isOpen, onClose, onStart }) {
+function Dialog({ children, className, descriptionId, isOpen, onClose, titleId }) {
   const dialogRef = useRef(null)
   const closeButtonRef = useRef(null)
 
@@ -54,10 +53,10 @@ function NewGameDialog({ currentLength, isOpen, onClose, onStart }) {
       }}
     >
       <section
-        aria-describedby="new-game-description"
-        aria-labelledby="new-game-title"
+        aria-describedby={descriptionId}
+        aria-labelledby={titleId}
         aria-modal="true"
-        className="dialog"
+        className={['dialog', className].filter(Boolean).join(' ')}
         onKeyDown={handleKeyDown}
         ref={dialogRef}
         role="dialog"
@@ -71,27 +70,10 @@ function NewGameDialog({ currentLength, isOpen, onClose, onStart }) {
         >
           ×
         </button>
-        <p className="dialog-kicker">New game</p>
-        <h2 id="new-game-title">Choose a word length</h2>
-        <p className="dialog-copy" id="new-game-description">
-          You’ll get one more guess than the number of letters.
-        </p>
-        <div className="length-options">
-          {LENGTHS.map((length) => (
-            <button
-              className={length === currentLength ? 'length-option is-current' : 'length-option'}
-              key={length}
-              onClick={() => onStart(length)}
-              type="button"
-            >
-              <strong>{length}</strong>
-              <span>{length + 1} guesses</span>
-            </button>
-          ))}
-        </div>
+        {children}
       </section>
     </div>
   )
 }
 
-export default NewGameDialog
+export default Dialog

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState } from 'react'
-import { MoonIcon, SunIcon } from '../icons'
+import { MoonIcon, SunIcon } from '@wordle/icons'
 
 const THEME_STORAGE_KEY = 'wordle-theme'
 

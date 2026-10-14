@@ -1,17 +1,11 @@
 import { useRef, useState } from 'react'
-import { getGameHistory } from '../game/api.js'
-import { HistoryIcon } from '../icons'
+import { getGameHistory } from '@wordle/game/api.js'
+import { HistoryIcon } from '@wordle/icons'
 import GameHistoryDialog from './GameHistoryDialog.jsx'
 
 const PAGE_SIZE = 12
 
-function GameHistoryControl({
-  currentGameId,
-  disabled,
-  onInputLockChange,
-  onRestoreGame,
-  playerId,
-}) {
+function GameHistoryControl({ currentGameId, disabled, onRestoreGame, playerId }) {
   const [error, setError] = useState(null)
   const [games, setGames] = useState([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -38,14 +32,12 @@ function GameHistoryControl({
   }
 
   const openDialog = () => {
-    onInputLockChange(true)
     setIsDialogOpen(true)
     loadHistory(null, true)
   }
 
   const closeDialog = () => {
     setIsDialogOpen(false)
-    onInputLockChange(false)
   }
 
   const restoreGame = (gameId) => {

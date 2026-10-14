@@ -1,4 +1,4 @@
-import { RestartIcon } from '../icons'
+import { RestartIcon } from '@wordle/icons'
 
 function RestartButton({ disabled, onRestart }) {
   return (

@@ -1,9 +1,8 @@
-import { useState } from 'react'
-import useWordGame from '../game/useWordGame.js'
+import useWordGame from '@wordle/game/useWordGame.js'
+import GameHeader from '@wordle/components/header/GameHeader.jsx'
+import Toast from '@wordle/components/ui/Toast.jsx'
 import Board from './Board.jsx'
-import GameHeader from './GameHeader.jsx'
 import Keyboard from './Keyboard.jsx'
-import Toast from './Toast.jsx'
 
 function releasePointerFocus(event) {
   if (event.detail > 0 && event.target instanceof Element) event.target.closest('button')?.blur()
@@ -11,14 +10,12 @@ function releasePointerFocus(event) {
 
 function WordGame() {
   const game = useWordGame()
-  const [inputLocked, setInputLocked] = useState(false)
 
   return (
     <main aria-busy={game.requestPending} className="app-shell" onClick={releasePointerFocus}>
       <GameHeader
         currentGameId={game.gameId}
         disabled={game.requestPending}
-        onInputLockChange={setInputLocked}
         onRestoreGame={game.restoreGame}
         onStartGame={game.startGame}
         playerId={game.playerId}
@@ -36,7 +33,7 @@ function WordGame() {
           wordLength={game.wordLength}
         />
         <Keyboard
-          inputLocked={inputLocked || game.requestPending || !game.hasGame}
+          disabled={game.requestPending || !game.hasGame}
           keyboardState={game.keyboardState}
           onDelete={game.deleteLetter}
           onSubmit={game.submitGuess}

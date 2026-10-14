@@ -1,22 +1,19 @@
 import { useState } from 'react'
 import NewGameDialog from './NewGameDialog.jsx'
 
-function GameLengthControl({ disabled, onInputLockChange, onStartGame, wordLength }) {
+function GameLengthControl({ disabled, onStartGame, wordLength }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   const openDialog = () => {
-    onInputLockChange(true)
     setIsDialogOpen(true)
   }
 
   const closeDialog = () => {
     setIsDialogOpen(false)
-    onInputLockChange(false)
   }
 
   const handleStart = (length) => {
     setIsDialogOpen(false)
-    onInputLockChange(false)
     onStartGame(length)
   }
 
