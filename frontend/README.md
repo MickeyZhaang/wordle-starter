@@ -2,10 +2,10 @@
 
 A compact Wordle-style game built with React and Vite. It supports five- through eight-letter
 rounds, physical and on-screen keyboard input, sequential result reveals, light and dark themes,
-and local game restoration after a reload.
+and server-backed game restoration after a reload.
 
-This is a frontend prototype. Its answer and accepted-word lists are intentionally small and
-shipped to the browser.
+The FastAPI service is authoritative for answers, accepted words, evaluations, game status, and
+versioning. The browser stores only the current server game ID and its word length.
 
 ## Development
 
@@ -13,6 +13,9 @@ shipped to the browser.
 npm install
 npm run dev
 ```
+
+The frontend uses `http://localhost:8000` by default. Set `VITE_API_URL` to use a different API
+origin.
 
 ## Checks
 

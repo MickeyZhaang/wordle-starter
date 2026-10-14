@@ -1,47 +1,89 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
-import { evaluateGuess } from './evaluateGuess.js'
-import { createGameState, gameReducer } from './gameState.js'
-import { loadGameState, saveGameState } from './persistence.js'
-import { ANSWERS, VALID_GUESSES } from './words.js'
+import { createGame, getGame, submitGuess as submitGuessRequest } from './api.js'
+import { createInitialGameState, gameReducer } from './gameState.js'
+import { clearGameReference, loadGameReference, saveGameReference } from './persistence.js'
 
 const INITIAL_WORD_LENGTH = 5
+const INVALID_GUESS_CODES = new Set(['invalid_request', 'invalid_word', 'wrong_length'])
+const INVALID_REFERENCE_CODES = new Set(['game_not_found', 'invalid_request'])
 
-function createInitialGame() {
+function requestEvent(error, row) {
+  const isInvalidGuess = INVALID_GUESS_CODES.has(error?.code)
+
   return {
-    answer: ANSWERS[INITIAL_WORD_LENGTH][0],
-    currentGuess: '',
-    guesses: [],
-    phase: 'active',
-    wordLength: INITIAL_WORD_LENGTH,
+    duration: isInvalidGuess ? 1700 : 3000,
+    message: error?.message ?? 'The game request failed.',
+    row,
+    type: isInvalidGuess ? 'invalid' : 'error',
   }
 }
 
-function initializeGame() {
-  return createGameState(loadGameState(createInitialGame()))
-}
-
-function getOutcome(currentGuess, answer, attemptCount, maximumAttempts) {
-  if (currentGuess === answer) return 'won'
-  if (attemptCount === maximumAttempts) return 'lost'
-  return 'active'
-}
-
 function useWordGame() {
-  const [state, dispatch] = useReducer(gameReducer, undefined, initializeGame)
+  const [state, dispatch] = useReducer(gameReducer, undefined, createInitialGameState)
   const [event, setEvent] = useState(null)
   const eventSequence = useRef(0)
-  const { answer, currentGuess, guesses, keyboardState, pendingOutcome, phase, wordLength } = state
-  const persistedPhase = phase === 'revealing' ? (pendingOutcome?.settledPhase ?? 'active') : phase
+  const initializationStarted = useRef(false)
+  const isMounted = useRef(false)
+  const requestInFlight = useRef(false)
+  const requestSequence = useRef(0)
+  const {
+    currentGuess,
+    gameId,
+    guesses,
+    keyboardState,
+    pendingOutcome,
+    phase,
+    requestPending,
+    version,
+    wordLength,
+  } = state
 
-  // Persist durable game changes while excluding the current guess to avoid writes on every keystroke.
   useEffect(() => {
-    saveGameState({
-      answer,
-      guesses,
-      phase: persistedPhase,
-      wordLength,
-    })
-  }, [answer, guesses, persistedPhase, wordLength])
+    isMounted.current = true
+
+    if (!initializationStarted.current) {
+      initializationStarted.current = true
+      requestInFlight.current = true
+      requestSequence.current += 1
+      const requestId = requestSequence.current
+
+      const initialize = async () => {
+        const reference = loadGameReference()
+
+        try {
+          let game = null
+
+          if (reference) {
+            try {
+              game = await getGame(reference.id)
+            } catch (error) {
+              if (!INVALID_REFERENCE_CODES.has(error?.code)) throw error
+              clearGameReference()
+            }
+          }
+
+          if (!game) game = await createGame(reference?.wordLength ?? INITIAL_WORD_LENGTH)
+          if (!isMounted.current || requestId !== requestSequence.current) return
+
+          saveGameReference(game)
+          dispatch({ type: 'game-loaded', game })
+        } catch (error) {
+          if (!isMounted.current || requestId !== requestSequence.current) return
+          eventSequence.current += 1
+          setEvent({ id: eventSequence.current, ...requestEvent(error) })
+          dispatch({ type: 'request-failed' })
+        } finally {
+          if (requestId === requestSequence.current) requestInFlight.current = false
+        }
+      }
+
+      initialize()
+    }
+
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
 
   const emitEvent = (values) => {
     eventSequence.current += 1
@@ -56,8 +98,8 @@ function useWordGame() {
     dispatch({ type: 'delete-letter' })
   }
 
-  const submitGuess = () => {
-    if (phase !== 'active') return
+  const submitGuess = async () => {
+    if (phase !== 'active' || requestPending || requestInFlight.current || !gameId) return
 
     if (currentGuess.length !== wordLength) {
       emitEvent({
@@ -69,21 +111,44 @@ function useWordGame() {
       return
     }
 
-    if (!VALID_GUESSES[wordLength].has(currentGuess)) {
-      emitEvent({
-        duration: 1700,
-        message: 'Not in word list',
-        row: guesses.length,
-        type: 'invalid',
-      })
-      return
-    }
+    requestInFlight.current = true
+    requestSequence.current += 1
+    const requestId = requestSequence.current
+    dispatch({ type: 'request-started' })
 
-    const attemptCount = guesses.length + 1
-    const evaluation = evaluateGuess(currentGuess, answer)
-    const settledPhase = getOutcome(currentGuess, answer, attemptCount, wordLength + 1)
-    setEvent(null)
-    dispatch({ type: 'guess-accepted', evaluation, guess: currentGuess, settledPhase })
+    try {
+      const game = await submitGuessRequest(gameId, currentGuess, version)
+      if (!isMounted.current || requestId !== requestSequence.current) return
+
+      setEvent(null)
+      dispatch({ type: 'guess-accepted', game })
+    } catch (error) {
+      if (!isMounted.current || requestId !== requestSequence.current) return
+
+      if (error?.code === 'stale_game') {
+        try {
+          const game = await getGame(gameId)
+          if (!isMounted.current || requestId !== requestSequence.current) return
+
+          saveGameReference(game)
+          dispatch({ type: 'game-loaded', game })
+          emitEvent({
+            duration: 3000,
+            message: 'Game updated from the server.',
+            type: 'error',
+          })
+        } catch (refreshError) {
+          if (!isMounted.current || requestId !== requestSequence.current) return
+          dispatch({ type: 'request-failed' })
+          emitEvent(requestEvent(refreshError, guesses.length))
+        }
+      } else {
+        dispatch({ type: 'request-failed' })
+        emitEvent(requestEvent(error, guesses.length))
+      }
+    } finally {
+      if (requestId === requestSequence.current) requestInFlight.current = false
+    }
   }
 
   const completeReveal = () => {
@@ -113,11 +178,26 @@ function useWordGame() {
     setEvent(null)
   }
 
-  const startGame = (nextWordLength) => {
-    const answers = ANSWERS[nextWordLength]
-    const nextAnswer = answers[Math.floor(Math.random() * answers.length)]
+  const startGame = async (nextWordLength) => {
+    requestInFlight.current = true
+    requestSequence.current += 1
+    const requestId = requestSequence.current
     setEvent(null)
-    dispatch({ type: 'start-game', answer: nextAnswer, wordLength: nextWordLength })
+    dispatch({ type: 'request-started' })
+
+    try {
+      const game = await createGame(nextWordLength)
+      if (!isMounted.current || requestId !== requestSequence.current) return
+
+      saveGameReference(game)
+      dispatch({ type: 'game-loaded', game })
+    } catch (error) {
+      if (!isMounted.current || requestId !== requestSequence.current) return
+      dispatch({ type: 'request-failed' })
+      emitEvent(requestEvent(error))
+    } finally {
+      if (requestId === requestSequence.current) requestInFlight.current = false
+    }
   }
 
   return {
@@ -126,8 +206,10 @@ function useWordGame() {
     deleteLetter,
     event,
     guesses,
+    hasGame: Boolean(gameId),
     keyboardState,
     phase,
+    requestPending,
     startGame,
     submitGuess,
     typeLetter,

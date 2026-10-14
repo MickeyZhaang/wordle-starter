@@ -1,7 +1,7 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import NewGameDialog from './NewGameDialog.jsx'
 
-function GameLengthControl({ onInputLockChange, onStartGame, wordLength }) {
+function GameLengthControl({ disabled, onInputLockChange, onStartGame, wordLength }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   const openDialog = () => {
@@ -9,10 +9,10 @@ function GameLengthControl({ onInputLockChange, onStartGame, wordLength }) {
     setIsDialogOpen(true)
   }
 
-  const closeDialog = useCallback(() => {
+  const closeDialog = () => {
     setIsDialogOpen(false)
     onInputLockChange(false)
-  }, [onInputLockChange])
+  }
 
   const handleStart = (length) => {
     setIsDialogOpen(false)
@@ -22,7 +22,7 @@ function GameLengthControl({ onInputLockChange, onStartGame, wordLength }) {
 
   return (
     <>
-      <button className="header-text-button" onClick={openDialog} type="button">
+      <button className="header-text-button" disabled={disabled} onClick={openDialog} type="button">
         {wordLength} letters
       </button>
       <NewGameDialog

@@ -90,6 +90,12 @@
   cursor: pointer;
 }
 
+.header-text-button:disabled,
+.header-icon-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .header-text-button {
   padding: 10px 4px;
   font-size: 12px;
@@ -108,7 +114,7 @@
   border-radius: 50%;
 }
 
-.header-icon-button:hover {
+.header-icon-button:hover:not(:disabled) {
   background: var(--hover);
 }
 

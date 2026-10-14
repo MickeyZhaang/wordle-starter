@@ -54,9 +54,7 @@ def create_game(database_path, dictionaries, word_length):
     answer = choice(dictionary.answers[word_length])
     game_id = str(uuid4())
     with storage.connect(database_path) as connection, storage.transaction(connection):
-        storage.insert_game(
-            connection, game_id, answer, word_length, dictionary.version
-        )
+        storage.insert_game(connection, game_id, answer, word_length, dictionary.version)
         return public_game(require_game(connection, game_id))
 
 
@@ -69,20 +67,14 @@ def submit_guess(database_path, dictionaries, game_id, word, expected_version):
     with storage.connect(database_path) as connection, storage.transaction(connection):
         record = require_game(connection, game_id)
         if record["version"] != expected_version:
-            raise GameError(
-                409, "stale_game", "Retrieve the latest game before submitting again."
-            )
+            raise GameError(409, "stale_game", "Retrieve the latest game before submitting again.")
         if record["status"] != "active":
             raise GameError(409, "game_finished", "This game has already finished.")
         if len(word) != record["word_length"]:
-            raise GameError(
-                422, "wrong_length", "The guess must match the game's word length."
-            )
+            raise GameError(422, "wrong_length", "The guess must match the game's word length.")
         dictionary = dictionaries.get(record["dictionary_version"])
         if dictionary is None:
-            raise GameError(
-                503, "dictionary_unavailable", "This game's dictionary is unavailable."
-            )
+            raise GameError(503, "dictionary_unavailable", "This game's dictionary is unavailable.")
         if word not in dictionary.guesses[record["word_length"]]:
             raise GameError(422, "invalid_word", "Not in word list.")
 

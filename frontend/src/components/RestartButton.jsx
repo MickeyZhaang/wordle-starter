@@ -1,10 +1,11 @@
 import { RestartIcon } from '../icons'
 
-function RestartButton({ onRestart }) {
+function RestartButton({ disabled, onRestart }) {
   return (
     <button
       aria-label="Restart game"
       className="header-icon-button"
+      disabled={disabled}
       onClick={onRestart}
       type="button"
     >

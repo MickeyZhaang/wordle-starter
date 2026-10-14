@@ -14,8 +14,9 @@ function WordGame() {
   const [inputLocked, setInputLocked] = useState(false)
 
   return (
-    <main className="app-shell" onClick={releasePointerFocus}>
+    <main aria-busy={game.requestPending} className="app-shell" onClick={releasePointerFocus}>
       <GameHeader
+        disabled={game.requestPending}
         onInputLockChange={setInputLocked}
         onStartGame={game.startGame}
         wordLength={game.wordLength}
@@ -31,7 +32,7 @@ function WordGame() {
           wordLength={game.wordLength}
         />
         <Keyboard
-          inputLocked={inputLocked}
+          inputLocked={inputLocked || game.requestPending || !game.hasGame}
           keyboardState={game.keyboardState}
           onDelete={game.deleteLetter}
           onSubmit={game.submitGuess}

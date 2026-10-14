@@ -1,70 +1,48 @@
 const GAME_STORAGE_KEY = 'wordle-game'
 
-const VALID_PHASES = new Set(['active', 'won', 'lost'])
-const VALID_RESULTS = new Set(['correct', 'present', 'absent'])
-
-function isStoredGuess(value, wordLength) {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    typeof value.word === 'string' &&
-    value.word.length === wordLength &&
-    /^[A-Z]+$/.test(value.word) &&
-    Array.isArray(value.evaluation) &&
-    value.evaluation.length === wordLength &&
-    value.evaluation.every((result) => VALID_RESULTS.has(result))
-  )
-}
-
-function isStoredGame(value) {
+function isGameReference(value) {
   if (value === null || typeof value !== 'object') return false
-  const { answer, guesses, phase, wordLength } = value
-  const maxAttempts = wordLength + 1
+  const { id, wordLength } = value
 
-  const hasValidShape =
+  return (
+    typeof id === 'string' &&
+    id.length > 0 &&
     Number.isInteger(wordLength) &&
     wordLength >= 5 &&
-    wordLength <= 8 &&
-    typeof answer === 'string' &&
-    answer.length === wordLength &&
-    /^[A-Z]+$/.test(answer) &&
-    Array.isArray(guesses) &&
-    guesses.length <= maxAttempts &&
-    guesses.every((guess) => isStoredGuess(guess, wordLength)) &&
-    VALID_PHASES.has(phase)
-
-  if (!hasValidShape) return false
-  const winningGuessIndex = guesses.findIndex((guess) => guess.word === answer)
-
-  if (phase === 'active') {
-    return guesses.length < maxAttempts && winningGuessIndex === -1
-  }
-
-  if (phase === 'won') {
-    return winningGuessIndex === guesses.length - 1
-  }
-
-  return guesses.length === maxAttempts && winningGuessIndex === -1
+    wordLength <= 8
+  )
 }
 
 function resolveStorage(storage) {
   return storage ?? window.localStorage
 }
 
-export function loadGameState(fallback, storage) {
+export function loadGameReference(storage) {
   try {
-    const storedGame = resolveStorage(storage).getItem(GAME_STORAGE_KEY)
-    if (!storedGame) return fallback
-    const parsedGame = JSON.parse(storedGame)
-    return isStoredGame(parsedGame) ? { ...parsedGame, currentGuess: '' } : fallback
+    const storedReference = resolveStorage(storage).getItem(GAME_STORAGE_KEY)
+    if (!storedReference) return null
+    const parsedReference = JSON.parse(storedReference)
+    return isGameReference(parsedReference) ? parsedReference : null
   } catch {
-    return fallback
+    return null
   }
 }
 
-export function saveGameState(game, storage) {
+export function saveGameReference(game, storage) {
   try {
-    resolveStorage(storage).setItem(GAME_STORAGE_KEY, JSON.stringify(game))
+    resolveStorage(storage).setItem(
+      GAME_STORAGE_KEY,
+      JSON.stringify({ id: game.id, wordLength: game.wordLength }),
+    )
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function clearGameReference(storage) {
+  try {
+    resolveStorage(storage).removeItem(GAME_STORAGE_KEY)
     return true
   } catch {
     return false
