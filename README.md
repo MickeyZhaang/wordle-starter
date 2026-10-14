@@ -107,6 +107,10 @@ docker compose down
 
 API documentation is automatically available at `http://localhost:8000/docs`.
 
+The API persists games in SQLite and supports creating a game, retrieving its public state, and
+submitting guesses. See [`backend/README.md`](backend/README.md) for the endpoint contract, local
+setup, word-list provenance, and backend checks.
+
 **Key files to modify:**
 
 - `backend/main.py` - Add your API endpoints here

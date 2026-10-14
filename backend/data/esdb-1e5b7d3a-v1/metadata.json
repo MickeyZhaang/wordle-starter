@@ -1,0 +1,18 @@
+{
+  "version": "esdb-1e5b7d3a-v1",
+  "source": "https://github.com/en-wl/wordlist",
+  "revision": "1e5b7d3a72f47a71da5d28686c1dd4b397178485",
+  "exportCommand": "python3 scowl word-list 60 A 1 --categories= --wo-poses=abbr --nosuggest",
+  "filter": "Retain lowercase ASCII words of length 5–8; uppercase, deduplicate, sort, and split by length.",
+  "answers": "Manually curated familiar non-plural words; subset of accepted guesses.",
+  "sha256": {
+    "allowed-5.txt": "259d9f3547272cb3d16d6d040fa6470f0ddbcf60d0fc371435fac213d95cb8d9",
+    "allowed-6.txt": "93266fc4dfbec3c0200f3f9d35367a12bb9609d512fd470339f9cbfe30acf553",
+    "allowed-7.txt": "23cedfe01357656670ec6625eea769a4f0fb65b35b4e70f05570607a6b3a4db7",
+    "allowed-8.txt": "c0fd9fb4522f009ac92c9b902f5b00c50e51591441dac9652380465362c6e3be",
+    "answers-5.txt": "27ccff356a71ecc1495cdb16c5f77eabdc58c6e53ce0e4bd0ca928ecf792ae49",
+    "answers-6.txt": "9a76ae7a03911d582d244ba125ac96cdce7525472bb72b9f2c78838cc2843c44",
+    "answers-7.txt": "ed1bb84f8b1cbc7df6b73231d9bc9432b0ac170560dd44e5554e55136b2a2180",
+    "answers-8.txt": "6f66347f423d386a48501495d5ef0b4e91ecff26a84781aa8bde47f6d83c8d28"
+  }
+}

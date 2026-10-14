@@ -7,7 +7,12 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - wordle-data:/data
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
+      - WORDLE_DATABASE_PATH=/data/wordle.db
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  wordle-data:
