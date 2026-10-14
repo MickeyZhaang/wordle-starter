@@ -1,7 +1,7 @@
 import unittest
 from types import SimpleNamespace
 
-from game import count_remaining_words, evaluate_guess
+from game import _count_compatible_words, count_remaining_words, evaluate_guess
 
 
 class EvaluationTests(unittest.TestCase):
@@ -28,7 +28,8 @@ class EvaluationTests(unittest.TestCase):
 
     def test_remaining_words_respect_duplicate_letter_evaluations(self):
         dictionary = SimpleNamespace(
-            guesses={5: frozenset({"APPLE", "AMPLE", "ANGLE", "ANKLE", "ALLEY", "PLANT"})}
+            version="test-v1",
+            guesses={5: frozenset({"APPLE", "AMPLE", "ANGLE", "ANKLE", "ALLEY", "PLANT"})},
         )
         record = {
             "word_length": 5,
@@ -40,3 +41,29 @@ class EvaluationTests(unittest.TestCase):
             ],
         }
         self.assertEqual(count_remaining_words(dictionary, record), 4)
+
+    def test_remaining_word_count_reuses_a_cached_clue_state(self):
+        self.addCleanup(_count_compatible_words.cache_clear)
+        _count_compatible_words.cache_clear()
+        dictionary = SimpleNamespace(
+            version="test-v1",
+            guesses={5: frozenset({"APPLE", "AMPLE", "ANGLE", "ANKLE", "ALLEY", "PLANT"})},
+        )
+        record = {
+            "word_length": 5,
+            "guesses": [
+                {
+                    "word": "ALLEY",
+                    "evaluation": ["correct", "present", "absent", "present", "absent"],
+                }
+            ],
+        }
+
+        self.assertEqual(count_remaining_words(dictionary, record), 4)
+        first = _count_compatible_words.cache_info()
+        self.assertEqual(count_remaining_words(dictionary, record), 4)
+        second = _count_compatible_words.cache_info()
+
+        self.assertEqual(first.misses, 1)
+        self.assertEqual(second.misses, 1)
+        self.assertEqual(second.hits, 1)

@@ -144,6 +144,10 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(result["version"], 1)
         self.assertEqual(result["status"], "active")
         self.assertEqual(result["remainingWordCount"], 32)
+        self.assertEqual(
+            self.client.get(f"/games/{game['id']}").json()["remainingWordCount"],
+            result["remainingWordCount"],
+        )
         self.assertNotIn("answer", result)
         self.assertEqual(
             result["guesses"],

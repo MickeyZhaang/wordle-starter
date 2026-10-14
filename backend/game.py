@@ -1,4 +1,5 @@
 from collections import Counter
+from functools import lru_cache
 from secrets import choice
 from uuid import uuid4
 
@@ -30,17 +31,24 @@ def evaluate_guess(guess, answer):
     return evaluation
 
 
-def count_remaining_words(dictionary, record):
-    candidates = dictionary.guesses[record["word_length"]]
-    if not record["guesses"]:
-        return len(candidates)
+@lru_cache(maxsize=4096)
+def _count_compatible_words(dictionary_version, word_length, candidates, constraints):
     return sum(
         all(
-            evaluate_guess(guess["word"], candidate) == guess["evaluation"]
-            for guess in record["guesses"]
+            tuple(evaluate_guess(guess, candidate)) == evaluation
+            for guess, evaluation in constraints
         )
         for candidate in candidates
     )
+
+
+def count_remaining_words(dictionary, record):
+    word_length = record["word_length"]
+    candidates = dictionary.guesses[word_length]
+    if not record["guesses"]:
+        return len(candidates)
+    constraints = tuple((guess["word"], tuple(guess["evaluation"])) for guess in record["guesses"])
+    return _count_compatible_words(dictionary.version, word_length, candidates, constraints)
 
 
 def public_game(record, dictionaries):
