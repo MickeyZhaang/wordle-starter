@@ -45,9 +45,10 @@ Content-Type: application/json
 {"word": "CRANE", "expectedVersion": 0}
 ```
 
-Successful endpoints return the public game state. The answer is omitted while the game is active
-and included after a win or loss. Each accepted guess increments `version`; a submission with an
-older `expectedVersion` receives `409 stale_game`.
+Successful endpoints return the public game state, including `remainingWordCount`, the number of
+accepted dictionary words compatible with every revealed evaluation. The answer is omitted while
+the game is active and included after a win or loss. Each accepted guess increments `version`; a
+submission with an older `expectedVersion` receives `409 stale_game`.
 
 List a player's games:
 

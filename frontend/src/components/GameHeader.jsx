@@ -1,5 +1,6 @@
 import GameHistoryControl from './GameHistoryControl.jsx'
 import GameLengthControl from './GameLengthControl.jsx'
+import RemainingWordCount from './RemainingWordCount.jsx'
 import RestartButton from './RestartButton.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
 
@@ -10,6 +11,7 @@ function GameHeader({
   onRestoreGame,
   onStartGame,
   playerId,
+  remainingWordCount,
   wordLength,
 }) {
   return (
@@ -21,6 +23,9 @@ function GameHeader({
           onStartGame={onStartGame}
           wordLength={wordLength}
         />
+        {Number.isInteger(remainingWordCount) && (
+          <RemainingWordCount key={currentGameId} value={remainingWordCount} />
+        )}
       </div>
       <h1 className="wordmark">Wordle</h1>
       <div className="header-side header-side--right">

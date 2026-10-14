@@ -103,16 +103,21 @@ def create_app(database_path=None):
         response_model=GameResponse,
         response_model_exclude_none=True,
     )
-    def get_game(game_id: UUID):
-        return game.retrieve_game(database_path, str(game_id))
+    def get_game(game_id: UUID, request: Request):
+        return game.retrieve_game(database_path, request.app.state.dictionaries, str(game_id))
 
     @app.post(
         "/players/{player_id}/games/{game_id}",
         response_model=GameResponse,
         response_model_exclude_none=True,
     )
-    def attach_game(player_id: UUID, game_id: UUID):
-        return game.attach_game(database_path, str(player_id), str(game_id))
+    def attach_game(player_id: UUID, game_id: UUID, request: Request):
+        return game.attach_game(
+            database_path,
+            request.app.state.dictionaries,
+            str(player_id),
+            str(game_id),
+        )
 
     @app.get(
         "/players/{player_id}/games",

@@ -15,6 +15,7 @@ from words import DICTIONARY_VERSION
 
 ANSWERS = {5: "PLANT", 6: "GARDEN", 7: "ORCHARD", 8: "SEEDLING"}
 INCORRECT = {5: "CRANE", 6: "PLANET", 7: "PICTURE", 8: "NOTEBOOK"}
+WORD_COUNTS = {5: 5112, 6: 8289, 7: 11584, 8: 12674}
 
 
 class ApiTests(unittest.TestCase):
@@ -54,13 +55,23 @@ class ApiTests(unittest.TestCase):
             with self.subTest(length=length):
                 game = self.new_game(length)
                 self.assertEqual(
-                    set(game), {"id", "wordLength", "maxAttempts", "status", "version", "guesses"}
+                    set(game),
+                    {
+                        "id",
+                        "wordLength",
+                        "maxAttempts",
+                        "remainingWordCount",
+                        "status",
+                        "version",
+                        "guesses",
+                    },
                 )
                 self.assertEqual(game["wordLength"], length)
                 self.assertEqual(game["maxAttempts"], length + 1)
                 self.assertEqual(game["status"], "active")
                 self.assertEqual(game["version"], 0)
                 self.assertEqual(game["guesses"], [])
+                self.assertEqual(game["remainingWordCount"], WORD_COUNTS[length])
                 self.assertEqual(self.client.get(f"/games/{game['id']}").json(), game)
 
     def test_games_are_independent(self):
@@ -132,6 +143,7 @@ class ApiTests(unittest.TestCase):
         result = response.json()
         self.assertEqual(result["version"], 1)
         self.assertEqual(result["status"], "active")
+        self.assertEqual(result["remainingWordCount"], 32)
         self.assertNotIn("answer", result)
         self.assertEqual(
             result["guesses"],
@@ -149,6 +161,7 @@ class ApiTests(unittest.TestCase):
             result["guesses"][0]["evaluation"],
             ["correct", "present", "absent", "present", "absent"],
         )
+        self.assertEqual(result["remainingWordCount"], 9)
 
     def test_repeated_and_plural_guesses_are_allowed(self):
         game = self.new_game()
@@ -192,6 +205,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(game["status"], "won")
         self.assertEqual(game["version"], 1)
         self.assertEqual(game["answer"], "PLANT")
+        self.assertEqual(game["remainingWordCount"], 1)
 
     def test_missing_and_malformed_game_ids(self):
         for game_id, status, code in [

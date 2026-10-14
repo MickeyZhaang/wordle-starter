@@ -30,11 +30,26 @@ def evaluate_guess(guess, answer):
     return evaluation
 
 
-def public_game(record):
+def count_remaining_words(dictionary, record):
+    candidates = dictionary.guesses[record["word_length"]]
+    if not record["guesses"]:
+        return len(candidates)
+    return sum(
+        all(
+            evaluate_guess(guess["word"], candidate) == guess["evaluation"]
+            for guess in record["guesses"]
+        )
+        for candidate in candidates
+    )
+
+
+def public_game(record, dictionaries):
+    dictionary = dictionaries.get(record["dictionary_version"])
     return GameResponse(
         id=record["id"],
         word_length=record["word_length"],
         max_attempts=record["word_length"] + 1,
+        remaining_word_count=count_remaining_words(dictionary, record) if dictionary else None,
         status=record["status"],
         version=record["version"],
         guesses=record["guesses"],
@@ -56,15 +71,17 @@ def create_game(database_path, dictionaries, word_length, player_id):
     with storage.connect(database_path) as connection, storage.transaction(connection):
         storage.insert_game(connection, game_id, answer, word_length, dictionary.version)
         storage.insert_player_game(connection, player_id, game_id)
-        return public_game(require_game(connection, game_id))
+        record = require_game(connection, game_id)
+    return public_game(record, dictionaries)
 
 
-def retrieve_game(database_path, game_id):
+def retrieve_game(database_path, dictionaries, game_id):
     with storage.connect(database_path) as connection:
-        return public_game(require_game(connection, game_id))
+        record = require_game(connection, game_id)
+    return public_game(record, dictionaries)
 
 
-def attach_game(database_path, player_id, game_id):
+def attach_game(database_path, dictionaries, player_id, game_id):
     with storage.connect(database_path) as connection, storage.transaction(connection):
         record = require_game(connection, game_id)
         owner = storage.get_game_owner(connection, game_id)
@@ -72,7 +89,7 @@ def attach_game(database_path, player_id, game_id):
             raise GameError(409, "game_owned", "This game belongs to another player profile.")
         if owner is None:
             storage.insert_player_game(connection, player_id, game_id)
-        return public_game(record)
+    return public_game(record, dictionaries)
 
 
 def list_games(database_path, player_id, limit, cursor):
@@ -126,4 +143,5 @@ def submit_guess(database_path, dictionaries, game_id, word, expected_version):
         else:
             status = "active"
         storage.insert_guess(connection, game_id, attempt, word, evaluation, status)
-        return public_game(require_game(connection, game_id))
+        record = require_game(connection, game_id)
+    return public_game(record, dictionaries)

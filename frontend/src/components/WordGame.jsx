@@ -22,6 +22,7 @@ function WordGame() {
         onRestoreGame={game.restoreGame}
         onStartGame={game.startGame}
         playerId={game.playerId}
+        remainingWordCount={game.remainingWordCount}
         wordLength={game.wordLength}
       />
       <section className="game" aria-label={`${game.wordLength}-letter word game`}>

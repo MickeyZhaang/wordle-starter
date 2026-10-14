@@ -33,6 +33,7 @@ class GameResponse(BaseModel):
     id: UUID
     word_length: int = Field(serialization_alias="wordLength")
     max_attempts: int = Field(serialization_alias="maxAttempts")
+    remaining_word_count: int | None = Field(default=None, serialization_alias="remainingWordCount")
     status: Literal["active", "won", "lost"]
     version: int
     guesses: list[GuessResponse]

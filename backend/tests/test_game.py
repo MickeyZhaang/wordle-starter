@@ -1,6 +1,7 @@
 import unittest
+from types import SimpleNamespace
 
-from game import evaluate_guess
+from game import count_remaining_words, evaluate_guess
 
 
 class EvaluationTests(unittest.TestCase):
@@ -24,3 +25,18 @@ class EvaluationTests(unittest.TestCase):
                 self.assertEqual(
                     evaluate_guess("A" * length, answer), ["correct"] + ["absent"] * (length - 1)
                 )
+
+    def test_remaining_words_respect_duplicate_letter_evaluations(self):
+        dictionary = SimpleNamespace(
+            guesses={5: frozenset({"APPLE", "AMPLE", "ANGLE", "ANKLE", "ALLEY", "PLANT"})}
+        )
+        record = {
+            "word_length": 5,
+            "guesses": [
+                {
+                    "word": "ALLEY",
+                    "evaluation": ["correct", "present", "absent", "present", "absent"],
+                }
+            ],
+        }
+        self.assertEqual(count_remaining_words(dictionary, record), 4)
