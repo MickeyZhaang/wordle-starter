@@ -1,5 +1,44 @@
 # Wordle Full Stack Assessment
 
+## Assessment Submission Update
+
+This repository contains the completed full-stack Wordle application. The FastAPI backend owns
+game rules and durable state, while the React frontend provides the board, keyboard, game history,
+and restoration experience.
+
+### Quick start
+
+Start the backend from the repository root:
+
+```bash
+docker compose up --build
+```
+
+In another terminal, start the frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. The frontend connects to the API at `http://localhost:8000`, and the
+interactive API documentation is available at `http://localhost:8000/docs`.
+
+### Architecture
+
+- `frontend/` contains the React UI, shared game reducer, API client, and browser persistence.
+- `backend/main.py` configures FastAPI, routes, startup, CORS, and HTTP error handling.
+- `backend/schemas.py` defines and validates the API request and response contracts.
+- `backend/game.py` coordinates game workflows, transactions, history, and public responses.
+- `backend/rules.py` contains the persistence-independent Wordle rules and remaining-word logic.
+- `backend/storage.py` owns SQLite connections, schema, queries, and transactions.
+- `backend/words.py` loads and verifies versioned accepted-word and answer dictionaries.
+
+Requests flow from the React API client through FastAPI into the game workflow. The workflow uses
+the rules module for decisions and the storage module for durable state, then returns a validated
+public response to the frontend reducer.
+
 ## Background
 
 Wordle is a simple game in which you have to guess a five-letter word. You get six guesses, learning a little more information with each guess, and eventually narrow your guesses down to find the answer.
