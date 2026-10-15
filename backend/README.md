@@ -78,19 +78,6 @@ Accepted guesses are generated from the English Speller Database revision record
 checked at startup against their recorded SHA-256 hashes, and each stored game records the
 dictionary version under which it was created.
 
-## Optimizations
-
-Remaining-word counts scan the complete accepted-word set so the displayed value can fall from
-thousands of words as clues are revealed. A bounded least-recently-used cache stores counts for up
-to 4,096 clue states, keyed by dictionary version, word length, candidate set, and the complete
-guess/evaluation history. Repeated reads of the same state reuse the stored integer instead of
-rescanning every candidate, while a new guess or dictionary version naturally produces a new key.
-
-The cache is process-local and disposable: SQLite remains the source of truth, and a cache miss
-recomputes the count from the versioned dictionary. Bounding it prevents unbounded memory growth;
-least-recently-used entries are evicted as new clue states replace older ones. An unplayed game
-returns the dictionary size directly without scanning or caching the candidate set.
-
 ## Checks
 
 ```sh
