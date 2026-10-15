@@ -1,10 +1,9 @@
 import unittest
-from types import SimpleNamespace
 
-from game import count_remaining_words, evaluate_guess
+from rules import count_remaining_words, determine_status, evaluate_guess
 
 
-class EvaluationTests(unittest.TestCase):
+class GameRuleTests(unittest.TestCase):
     def test_exact_matches_take_priority_over_duplicate_yellows(self):
         cases = [
             ("APPLE", "APPLE", ["correct"] * 5),
@@ -27,16 +26,25 @@ class EvaluationTests(unittest.TestCase):
                 )
 
     def test_remaining_words_respect_duplicate_letter_evaluations(self):
-        dictionary = SimpleNamespace(
-            guesses={5: frozenset({"APPLE", "AMPLE", "ANGLE", "ANKLE", "ALLEY", "PLANT"})},
-        )
-        record = {
-            "word_length": 5,
-            "guesses": [
-                {
-                    "word": "ALLEY",
-                    "evaluation": ["correct", "present", "absent", "present", "absent"],
-                }
-            ],
-        }
-        self.assertEqual(count_remaining_words(dictionary, record), 4)
+        candidates = frozenset({"APPLE", "AMPLE", "ANGLE", "ANKLE", "ALLEY", "PLANT"})
+        guesses = [
+            {
+                "word": "ALLEY",
+                "evaluation": ["correct", "present", "absent", "present", "absent"],
+            }
+        ]
+        self.assertEqual(count_remaining_words(candidates, guesses), 4)
+
+    def test_status_resolves_attempt_boundaries(self):
+        cases = [
+            ("PLANT", "PLANT", 1, 6, "won"),
+            ("PLANT", "PLANT", 6, 6, "won"),
+            ("CRANE", "PLANT", 5, 6, "active"),
+            ("CRANE", "PLANT", 6, 6, "lost"),
+        ]
+        for guess, answer, attempt, maximum_attempts, expected in cases:
+            with self.subTest(guess=guess, attempt=attempt):
+                self.assertEqual(
+                    determine_status(guess, answer, attempt, maximum_attempts),
+                    expected,
+                )

@@ -1,8 +1,8 @@
-from collections import Counter
 from secrets import choice
 from uuid import uuid4
 
 import storage
+from rules import count_remaining_words, determine_status, evaluate_guess
 from schemas import GameHistoryResponse, GameResponse, GameSummaryResponse
 from words import DICTIONARY_VERSION
 
@@ -15,41 +15,20 @@ class GameError(Exception):
         self.message = message
 
 
-def evaluate_guess(guess, answer):
-    evaluation = ["absent"] * len(guess)
-    remaining = Counter()
-    for index, letter in enumerate(answer):
-        if guess[index] == letter:
-            evaluation[index] = "correct"
-        else:
-            remaining[letter] += 1
-    for index, letter in enumerate(guess):
-        if evaluation[index] != "correct" and remaining[letter] > 0:
-            evaluation[index] = "present"
-            remaining[letter] -= 1
-    return evaluation
-
-
-def count_remaining_words(dictionary, record):
-    candidates = dictionary.guesses[record["word_length"]]
-    if not record["guesses"]:
-        return len(candidates)
-    return sum(
-        all(
-            evaluate_guess(guess["word"], candidate) == guess["evaluation"]
-            for guess in record["guesses"]
-        )
-        for candidate in candidates
-    )
-
-
 def public_game(record, dictionaries):
     dictionary = dictionaries.get(record["dictionary_version"])
     return GameResponse(
         id=record["id"],
         word_length=record["word_length"],
         max_attempts=record["word_length"] + 1,
-        remaining_word_count=count_remaining_words(dictionary, record) if dictionary else None,
+        remaining_word_count=(
+            count_remaining_words(
+                dictionary.guesses[record["word_length"]],
+                record["guesses"],
+            )
+            if dictionary
+            else None
+        ),
         status=record["status"],
         version=record["version"],
         guesses=record["guesses"],
@@ -136,12 +115,7 @@ def submit_guess(database_path, dictionaries, game_id, word, expected_version):
 
         evaluation = evaluate_guess(word, record["answer"])
         attempt = record["version"] + 1
-        if word == record["answer"]:
-            status = "won"
-        elif attempt == record["word_length"] + 1:
-            status = "lost"
-        else:
-            status = "active"
+        status = determine_status(word, record["answer"], attempt, record["word_length"] + 1)
         storage.insert_guess(connection, game_id, attempt, word, evaluation, status)
         record = require_game(connection, game_id)
     return public_game(record, dictionaries)
