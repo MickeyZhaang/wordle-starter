@@ -2,6 +2,8 @@
 
 ## Assessment Submission Update
 
+https://github.com/user-attachments/assets/7a379169-5699-45a6-91bb-e1741aa17689
+
 This repository contains the completed full-stack Wordle application. The FastAPI backend owns
 game rules and durable state, while the React frontend provides the board, keyboard, game history,
 and restoration experience.
