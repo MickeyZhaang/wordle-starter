@@ -17,6 +17,10 @@ def evaluate_guess(guess, answer):
 
 
 def count_remaining_words(candidates, guesses):
+    """
+    Calculate exactly in O(candidates × guesses × word length)
+    Favors stateless simplicity over unncessary complexity with sample size
+    """
     if not guesses:
         return len(candidates)
     return sum(
